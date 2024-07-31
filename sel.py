@@ -6,6 +6,7 @@ from selenium.webdriver.firefox.options import Options
 import time
 import json
 import os
+import re
 
 # Set up Firefox options
 options = Options()
@@ -13,16 +14,18 @@ options.binary_location = 'C:\\Program Files\\Mozilla Firefox\\firefox.exe'  # U
 # options.add_argument("--headless")  # Run in headless mode (optional)
 
 # Specify the path to the geckodriver
-geckodriver_path = 'C:\\geckodriver.exe'  # Update this path
+geckodriver_path = '/geckodriver.exe'  # Update this path
 
-# Set up the Firefox service
-service = Service(geckodriver_path)
+# Function to initialize the Firefox driver
+def init_driver():
+    service = Service(geckodriver_path)
+    return webdriver.Firefox(service=service, options=options)
 
 # Initialize the Firefox driver
-driver = webdriver.Firefox(service=service, options=options)
+driver = init_driver()
 
-# Start the timer
-start_time = time.time()
+# Start the timer for whole of process
+process_start_time = time.time()
 
 if not os.path.exists('products_details.json'):
 
@@ -34,7 +37,7 @@ if not os.path.exists('products_details.json'):
         last_height = driver.execute_script("return document.body.scrollHeight")
         while True:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2.5)  # Wait for the page to load
+            time.sleep(3)  # Wait for the page to load
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
                 break
@@ -80,10 +83,12 @@ if not os.path.exists('products_details.json'):
 # Function to extract product details
 def product_details(driver, url):
     driver.get(url)
-    time.sleep(2)  # Wait for the page to load
+    time.sleep(3)  # Wait for the page to load
 
     try:
         product_group = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/div/div').text
+        product_group = product_group.replace("خانه\n", "").replace("\n", ">")
+        product_group = product_group.rsplit(">", 1)[0]
     except:
         product_group = None
 
@@ -94,23 +99,36 @@ def product_details(driver, url):
 
     try:
         stock = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[2]/div/div[2]/div/div[2]/div[1]/span').text
+        stock = re.search(r'\d+', stock ).group() if stock  else None
     except:
         stock = None
 
     try:
         price = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[2]/div/div[2]/div/div[2]/div[1]/div/span').text
+        price = re.sub(r'\D', '', price)
     except:
         price = None
 
     try:
-        main_pic_element = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[1]/div/div[1]/div/div/div[1]/div[1]/div/div/div/img')
-        main_pic_link = main_pic_element.get_attribute('src')
-        main_pic_alt = main_pic_element.get_attribute('alt')
+        main_pic_link = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[1]/div/div[1]/div/div/div[1]/div[1]/div/div')
+        main_pic_alt = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[2]/div[1]/div[1]/h1').text
+        
+        # Check if there is a video tag within the main_pic_element
+        try:
+            video_tag = main_pic_link.find_element(By.TAG_NAME, 'video')
+            main_pic_link = "video"
+        except:
+            img_element = main_pic_link.find_element(By.TAG_NAME, 'img')
+            main_pic_link = img_element.get_attribute('src')
+            main_pic_link = main_pic_link.replace("_512X512X70.jpg", "")
     except:
         main_pic_link = None
         main_pic_alt = None
 
-    return {
+    # Create the dictionary with the desired order
+    product_details_dict = {
+        'id': id,
+        'link': url,
         'product_group': product_group,
         'title': title,
         'stock': stock,
@@ -118,6 +136,8 @@ def product_details(driver, url):
         'main_pic_link': main_pic_link,
         'main_pic_alt': main_pic_alt
     }
+
+    return product_details_dict
 
 # Load existing links from JSON file
 existing_links = []
@@ -138,6 +158,7 @@ if os.path.exists('links.json'):
     new_products_details = []
     for item in existing_links:
         if item['id'] > last_id:
+            start_time = time.time()  # Start time for the product details extraction
             details = product_details(driver, item['link'])
             details['id'] = item['id']
             details['link'] = item['link']
@@ -147,12 +168,21 @@ if os.path.exists('links.json'):
                 products_details = existing_products_details + new_products_details
                 json.dump(products_details, file, ensure_ascii=False, indent=2)
 
+            end_time = time.time()  # End time for the product details extraction
+            elapsed_time = end_time - start_time
+
+            # If extracting details takes more than 5 seconds, restart the driver
+            if elapsed_time > 10:
+                print(f"Product details extraction took too long ({elapsed_time} seconds). Restarting driver...")
+                driver.quit()
+                driver = init_driver()
+
     # Close the browser
     driver.quit()
 
-    # End the timer
-    end_time = time.time()
+    # End the timer for whole of process
+    process_end_time = time.time()
 
-    # Calculate the elapsed time
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time} seconds")
+    # Calculate the elapsed time for whole of process
+    process_elapsed_time = process_end_time - process_start_time
+    print(f"Process elapsed time: {process_elapsed_time} seconds")
