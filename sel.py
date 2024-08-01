@@ -83,7 +83,7 @@ if not os.path.exists('products_details.json'):
 # Function to extract product details
 def product_details(driver, url):
     driver.get(url)
-    time.sleep(3)  # Wait for the page to load
+    time.sleep(1)  # Wait for the page to load
 
     try:
         product_group = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/div/div').text
@@ -125,6 +125,26 @@ def product_details(driver, url):
         main_pic_link = None
         main_pic_alt = None
 
+    try:
+        # Click on the first image to open the gallery
+        main_pic = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[1]/div/div[1]/div/div/div[1]/div[1]/div/div/div/img')
+        main_pic.click()
+        time.sleep(1)
+        # List to store image URLs
+        gallery = []
+        for i in range(2, 21):
+            try:
+                # Locate the image elements within the current slide
+                images = driver.find_elements(By.XPATH, f'/html/body/div[8]/div/div[1]/div/div/div/div/div/div[2]/div/div[{i}]//img')
+                # Extract the src attribute (URL) from each image element
+                for img in images:
+                    gallery.append(img.get_attribute('src').replace("_256X256X70.jpg", ""))
+
+            except Exception as e:
+                print(f'Error processing gallery {i}: {e}')
+    except:
+        gallery = None
+
     # Create the dictionary with the desired order
     product_details_dict = {
         'id': id,
@@ -134,7 +154,8 @@ def product_details(driver, url):
         'stock': stock,
         'price': price,
         'main_pic_link': main_pic_link,
-        'main_pic_alt': main_pic_alt
+        'main_pic_alt': main_pic_alt,
+        'gallery': gallery
     }
 
     return product_details_dict
@@ -167,12 +188,12 @@ if os.path.exists('links.json'):
             with open('products_details.json', 'w', encoding='utf-8') as file:
                 products_details = existing_products_details + new_products_details
                 json.dump(products_details, file, ensure_ascii=False, indent=2)
+                end_time = time.time()  # End time for the product details extraction
 
-            end_time = time.time()  # End time for the product details extraction
             elapsed_time = end_time - start_time
 
-            # If extracting details takes more than 5 seconds, restart the driver
-            if elapsed_time > 10:
+            # If extracting details takes more than 8 seconds, restart the driver
+            if elapsed_time > 8:
                 print(f"Product details extraction took too long ({elapsed_time} seconds). Restarting driver...")
                 driver.quit()
                 driver = init_driver()
