@@ -11,7 +11,8 @@ import re
 # Set up Firefox options
 options = Options()
 options.binary_location = 'C:\\Program Files\\Mozilla Firefox\\firefox.exe'  # Update this path if needed
-# options.add_argument("--headless")  # Run in headless mode (optional)
+options.add_argument("--headless")  # Run in headless mode (optional)
+options.add_argument('--window-size=1920,1080')  
 
 # Specify the path to the geckodriver
 geckodriver_path = '/geckodriver.exe'  # Update this path
