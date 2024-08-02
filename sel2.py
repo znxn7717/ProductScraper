@@ -14,7 +14,7 @@ options = Options()
 options.binary_location = 'C:\\Program Files\\Mozilla Firefox\\firefox.exe'  # Update this path if needed
 options.add_argument("--private")  # Run in incognito mode
 # options.add_argument("--headless")  # Run in headless mode (optional)
-# options.add_argument('--window-size=1920,1080')  
+# options.add_argument('--window-size=1920,1080')
 
 # Specify the path to the geckodriver
 geckodriver_path = '/geckodriver.exe'  # Update this path
@@ -27,39 +27,28 @@ def init_driver():
 # Initialize the Firefox driver
 driver = init_driver()
 
-# Start the timer for whole of process
+# Start the timer for the whole process
 process_start_time = time.time()
 
 if not os.path.exists('products_details.json'):
 
     # Open the website
-    driver.get('https://basalam.com/arayeshii_artemis')
+    driver.get('https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA/')
 
-    # Function to scroll to the end of the page
-    def scroll_to_end(driver, max_attempts=10):
+    def scroll_to_end(driver):
         action = ActionChains(driver)
-        unchanged_attempts = 0
-        last_count = 0
-        
-        while unchanged_attempts < max_attempts:
-            # Get the current number of products
-            current_count = len(driver.find_elements(By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div'))
-            
-            if current_count == last_count:
-                unchanged_attempts += 1
-            else:
-                unchanged_attempts = 0
-            
-            last_count = current_count
-
-            action.scroll_by_amount(0, 10000).perform()  # Scroll down by 10000 pixels
-            time.sleep(0.1)  # Wait for the page to load
+        while True:
+            try:
+                driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[2]')
+                action.scroll_by_amount(0, 10000).perform()  # Scroll down by 1000 pixels
+                time.sleep(.1)  # Wait for the page to load
+            except:
+                break
 
     # Scroll to the end of the page to load all products
     scroll_to_end(driver)
-    time.sleep(3)
 
-    # Load existing links from JSON file
+# Load existing links from JSON file
     existing_links = []
     if os.path.exists('links.json'):
         with open('links.json', 'r', encoding='utf-8') as file:
@@ -70,11 +59,12 @@ if not os.path.exists('products_details.json'):
 
     # Extract the href of the link in the first div of each section
     new_links = []
-    section = driver.find_elements(By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div')
-    for i in range(last_id + 1, len(section) + 1):
+    section = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div').find_elements(By.TAG_NAME, 'a')
+
+    for i in range(1, len(section) + 1):
         try:
             # Find the first div within the section
-            link = driver.find_element(By.XPATH, f'/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div[{i}]/div[1]/a').get_attribute('href')
+            link = driver.find_element(By.XPATH, f'/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div/div[{i}]/a').get_attribute('href')
             new_links.append({'id': i, 'link': link})
         except Exception as e:
             print(f"Error occurred at link {i}: {e}")
@@ -86,7 +76,7 @@ if not os.path.exists('products_details.json'):
     # Create a DataFrame from the combined list of links with IDs
     df = pd.DataFrame(links)
 
-    # Print the number of links found
+    # Print the number of child <div> elements
     print(f"Total number of links: {len(df)}")
 
     # Save the DataFrame to a JSON file using the json library
@@ -99,9 +89,7 @@ def product_details(driver, url):
     time.sleep(1)  # Wait for the page to load
 
     try:
-        product_group = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/div/div').text
-        product_group = product_group.replace("خانه\n", "").replace("\n", ">")
-        product_group = product_group.rsplit(">", 1)[0]
+        product_group = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div[2]/div/div[2]/div/div[1]/div[1]/div/div').text
     except:
         product_group = None
 
@@ -211,12 +199,12 @@ if os.path.exists('links.json'):
                 driver.quit()
                 driver = init_driver()
 
-    # Close the browser
-    driver.quit()
+# Close the browser
+driver.quit()
 
-    # End the timer for whole of process
-    process_end_time = time.time()
+# End the timer for the whole process
+process_end_time = time.time()
 
-    # Calculate the elapsed time for whole of process
-    process_elapsed_time = process_end_time - process_start_time
-    print(f"Process elapsed time: {process_elapsed_time} seconds")
+# Calculate the elapsed time for the whole process
+process_elapsed_time = process_end_time - process_start_time
+print(f"Process elapsed time: {process_elapsed_time} seconds")
