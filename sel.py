@@ -36,7 +36,7 @@ if not os.path.exists('products_details.json'):
     driver.get('https://basalam.com/arayeshii_artemis')
 
     # Function to scroll to the end of the page
-    def scroll_to_end(driver, max_attempts=10):
+    def scroll_to_end(driver, max_attempts=25):
         action = ActionChains(driver)
         unchanged_attempts = 0
         last_count = 0
@@ -119,6 +119,7 @@ def product_details(driver, url):
     try:
         price = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[2]/div/div[2]/div/div[2]/div[1]/div/span').text
         price = re.sub(r'\D', '', price)
+        stock = int(stock)
     except:
         price = None
 
@@ -206,7 +207,7 @@ if os.path.exists('links.json'):
             elapsed_time = end_time - start_time
 
             # If extracting details takes more than 8 seconds, restart the driver
-            if elapsed_time > 8:
+            if elapsed_time > 12:
                 print(f"Product details extraction took too long ({elapsed_time} seconds). Restarting driver...")
                 driver.quit()
                 driver = init_driver()

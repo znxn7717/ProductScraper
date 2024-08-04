@@ -89,62 +89,54 @@ def product_details(driver, url):
     time.sleep(1)  # Wait for the page to load
 
     try:
-        product_group = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div[2]/div/div[2]/div/div[1]/div[1]/div/div').text
+        product_group = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[1]/div[1]/div/div').text
+        product_group = product_group.replace("ترب\n", "").replace("\n", ">")
+        product_group = product_group.rsplit(">", 1)[0]
     except:
         product_group = None
 
     try:
-        title = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[2]/div[1]/div[1]/h1').text
+        title = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[2]/div[2]/h1').text
     except:
         title = None
-
     try:
-        stock = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[2]/div/div[2]/div/div[2]/div[1]/span').text
-        stock = re.search(r'\d+', stock ).group() if stock  else None
-    except:
-        stock = None
-
-    try:
-        price = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[2]/div/div[2]/div/div[2]/div[1]/div/span').text
-        price = re.sub(r'\D', '', price)
+        price = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[2]/div[4]/a/div/div[1]/div[2]').text
+        persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+        price = re.sub(r'\D', '', price).translate(persian_to_english_digits)
     except:
         price = None
-
     try:
-        main_pic_link = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[1]/div/div[1]/div/div/div[1]/div[1]/div/div')
-        main_pic_alt = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[2]/div[1]/div[1]/h1').text
-        
-        # Check if there is a video tag within the main_pic_element
-        try:
-            video_tag = main_pic_link.find_element(By.TAG_NAME, 'video')
-            main_pic_link = "video"
-        except:
-            img_element = main_pic_link.find_element(By.TAG_NAME, 'img')
-            main_pic_link = img_element.get_attribute('src')
-            main_pic_link = main_pic_link.replace("_512X512X70.jpg", "")
+        main_pic_link = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[1]/div/div/div[2]/picture/img').get_attribute('src')
+        main_pic_alt = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[2]/div[2]/h1').text
+        main_pic_link = main_pic_link.replace("_/280x280.jpg", "")
     except:
         main_pic_link = None
         main_pic_alt = None
-
     try:
         # Click on the first image to open the gallery
-        main_pic = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[1]/div/div[1]/div/div/div[1]/div[1]/div/div/div/img')
+        gallery_len = len(driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[1]/div/div/div[1]').find_elements(By.XPATH, './div'))
+        if gallery_len == 4:
+            div_4_element = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[1]/div/div/div[1]/div[4]/div').text
+            move_len = int(re.sub(r'\D', '', div_4_element)) + 3
+        else:
+            move_len = gallery_len
+        main_pic = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[1]/div/div/div[2]/picture/img')
         main_pic.click()
-        time.sleep(1)
+        time.sleep(3)
         # List to store image URLs
         gallery = []
-        for i in range(2, 21):
+        for i in range(1, move_len):
             try:
                 # Locate the image elements within the current slide
-                images = driver.find_elements(By.XPATH, f'/html/body/div[8]/div/div[1]/div/div/div/div/div/div[2]/div/div[{i}]//img')
-                # Extract the src attribute (URL) from each image element
-                for img in images:
-                    gallery.append(img.get_attribute('src').replace("_256X256X70.jpg", ""))
-
+                driver.find_element(By.XPATH, '/html/body/div[4]/div/div/div/button[2]').click()
+                time.sleep(.5)
+                image = driver.find_element(By.XPATH, '/html/body/div[4]/div/div/div/div[1]/img[2]').get_attribute('src')
+                gallery.append(image)
             except Exception as e:
                 print(f'Error processing gallery {i}: {e}')
     except:
         gallery = None
+
 
     # Create the dictionary with the desired order
     product_details_dict = {
@@ -152,7 +144,7 @@ def product_details(driver, url):
         'link': url,
         'product_group': product_group,
         'title': title,
-        'stock': stock,
+        'stock': 1,
         'price': price,
         'main_pic_link': main_pic_link,
         'main_pic_alt': main_pic_alt,
@@ -194,7 +186,7 @@ if os.path.exists('links.json'):
             elapsed_time = end_time - start_time
 
             # If extracting details takes more than 8 seconds, restart the driver
-            if elapsed_time > 8:
+            if elapsed_time > 15:
                 print(f"Product details extraction took too long ({elapsed_time} seconds). Restarting driver...")
                 driver.quit()
                 driver = init_driver()
