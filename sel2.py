@@ -103,8 +103,10 @@ def product_details(driver, url):
         price = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[2]/div[4]/a/div/div[1]/div[2]').text
         persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
         price = re.sub(r'\D', '', price).translate(persian_to_english_digits)
+        stock = 1
     except:
         price = None
+        stock = 0
     try:
         main_pic_link = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[1]/div/div/div[2]/picture/img').get_attribute('src')
         main_pic_alt = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[2]/div[1]/div/div/div[2]/div[2]/h1').text
@@ -144,7 +146,7 @@ def product_details(driver, url):
         'link': url,
         'product_group': product_group,
         'title': title,
-        'stock': 1,
+        'stock': stock,
         'price': price,
         'main_pic_link': main_pic_link,
         'main_pic_alt': main_pic_alt,

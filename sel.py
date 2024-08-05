@@ -122,6 +122,7 @@ def product_details(driver, url):
         stock = int(stock)
     except:
         price = None
+        stock = 0
 
     try:
         main_pic_link = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[1]/div/div[1]/div/div/div[1]/div[1]/div/div')
