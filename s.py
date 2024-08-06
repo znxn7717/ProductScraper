@@ -1,3 +1,19 @@
+# from Scraper import ProductScraper
+from Test import ProductScraper
+
+# WebDriverWait 
+
+scraper = ProductScraper()
+seller_url = 'https://basalam.com/arayeshii_artemis'
+# seller_url = 'https://basalam.com/khaneyesalamat'
+# seller_url = 'https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA'
+# seller_url = 'https://www.digikala.com/seller/5a6gg/'
+# seller_url = 'https://www.digikala.com/seller/c7kvk/'
+scraper.basalam_products_details_extractor(seller_url, driver='firefox')
+# scraper.torob_products_details_extractor(seller_url, driver='firefox')
+# scraper.digikala_products_details_extractor(seller_url, driver='chrome')
+
+
         # def scroll_to_end(driver):
         #     action = ActionChains(driver)
         #     # products_len = products_num
