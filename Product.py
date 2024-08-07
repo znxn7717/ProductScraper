@@ -7,7 +7,7 @@ import json
 class Database:
     def __init__(self):
         load_dotenv()
-        self.host = os.getenv('DB_HOST', ' 136.243.36.95')
+        self.host = os.getenv('DB_HOST', '136.243.36.77')
         self.port = os.getenv('DB_PORT', 3306)
         self.database = os.getenv('DB_DATABASE', 'bitnetma_products')
         self.user = os.getenv('DB_USER', 'bitnetma_1')
