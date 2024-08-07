@@ -7,11 +7,11 @@ import json
 class Database:
     def __init__(self):
         load_dotenv()
-        self.host = os.getenv('DB_HOST', 'sql12.freemysqlhosting.net')
+        self.host = os.getenv('DB_HOST', '136.243.36.77')
         self.port = os.getenv('DB_PORT', 3306)
-        self.database = os.getenv('DB_DATABASE', 'sql12724427')
-        self.user = os.getenv('DB_USER', 'sql12724427')
-        self.password = os.getenv('DB_PASSWORD', 'SyY9eRCI8N')
+        self.database = os.getenv('DB_DATABASE', 'bitnetma_products')
+        self.user = os.getenv('DB_USER', 'bitnetma_1')
+        self.password = os.getenv('DB_PASSWORD', '$RdgfY#DOVik')
         self.connection = None
 
     def product_connect(self):
