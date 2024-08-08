@@ -4,6 +4,8 @@ import time
 import json
 import math
 import pandas as pd
+from Product import Database
+from dotenv import load_dotenv
 from selenium import webdriver
 from urllib.parse import unquote
 from selenium.webdriver.common.by import By
@@ -31,6 +33,8 @@ class ProductScraper:
         self.window_size = window_size
         self.incognito_mode = incognito_mode
         self.headless_mode = headless_mode
+        self.db = Database()
+        self.db.product_connect()
 
     def init_firefox_driver(self):
         service = Service(self.firefox_driver_path)
@@ -287,7 +291,8 @@ class ProductScraper:
             gallery = None
         return {
             'id': None,
-            'link': product_url,
+            'seller_id': None,
+            'link': None,
             'product_group': product_group,
             'title': title,
             'stock': stock,
@@ -352,7 +357,8 @@ class ProductScraper:
             gallery = None
         return {
             'id': None,
-            'link': product_url,
+            'seller_id': None,
+            'link': None,
             'product_group': product_group,
             'title': title,
             'stock': stock,
@@ -410,7 +416,8 @@ class ProductScraper:
             gallery = None
         return {
             'id': None,
-            'link': product_url,
+            'seller_id': None,
+            'link': None,
             'product_group': product_group,
             'title': title,
             'stock': stock,
@@ -420,7 +427,7 @@ class ProductScraper:
             'gallery': gallery
         }
 
-    def basalam_products_details_extractor(self, seller_url, driver='firefox'):
+    def basalam_products_details_extractor(self, seller_url, sid, driver='firefox'):
         if driver == 'firefox':
             driver = self.init_firefox_driver()
         elif driver == 'chrome':
@@ -441,6 +448,7 @@ class ProductScraper:
                 start_time = time.time()
                 details = self.basalam_product_details_dict(item['link'], driver)
                 details['id'] = item['id']
+                details['seller_id'] = sid
                 details['link'] = item['link']
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
@@ -448,7 +456,7 @@ class ProductScraper:
                 end_time = time.time()
                 elapsed_time = end_time - start_time
                 if elapsed_time > 12:
-                    print(f"Product details extraction took too long ({elapsed_time} seconds). Restarting driver...")
+                    print(f"Product details extraction took too long ({elapsed_time} seconds).")
                     driver = self.reset_driver(driver)
 
         driver.quit()
@@ -456,7 +464,7 @@ class ProductScraper:
         process_elapsed_time = process_end_time - process_start_time
         print(f"Process elapsed time: {process_elapsed_time} seconds")
 
-    def torob_products_details_extractor(self, seller_url, driver='firefox'):
+    def torob_products_details_extractor(self, seller_url, sid, driver='firefox'):
         if driver == 'firefox':
             driver = self.init_firefox_driver()
         elif driver == 'chrome':
@@ -479,6 +487,7 @@ class ProductScraper:
                 start_time = time.time()
                 details = self.torob_product_details_dict(item['link'], driver)
                 details['id'] = item['id']
+                details['seller_id'] = sid
                 details['link'] = item['link']
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
@@ -494,7 +503,7 @@ class ProductScraper:
         process_elapsed_time = process_end_time - process_start_time
         print(f"Process elapsed time: {process_elapsed_time} seconds")
 
-    def digikala_products_details_extractor(self, seller_url, driver='chrome'):
+    def digikala_products_details_extractor(self, seller_url, sid, driver='chrome'):
         if driver == 'firefox':
             driver = self.init_firefox_driver()
         elif driver == 'chrome':
@@ -515,14 +524,16 @@ class ProductScraper:
                 start_time = time.time()
                 details = self.digikala_product_details_dict(item['link'], driver)
                 details['id'] = item['id']
+                details['seller_id'] = sid
                 details['link'] = item['link']
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
                 self.write_json(prefix=seller_id, type='products_details', data=products_details)
+                self.db.product_create(details)
                 end_time = time.time()
                 elapsed_time = end_time - start_time
                 if elapsed_time > 15:
-                    print(f"Product details extraction took too long ({elapsed_time} seconds). Restarting driver...")
+                    print(f"Product details extraction took too long ({elapsed_time} seconds).")
                     driver = self.reset_driver(driver)
 
         driver.quit()

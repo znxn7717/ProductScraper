@@ -175,7 +175,8 @@ class ProductScraper:
             gallery = None
         return {
             'id': None,
-            'link': product_url,
+            'seller_id': None,
+            'link': None,
             'product_group': product_group,
             'title': title,
             'stock': stock,
@@ -185,7 +186,7 @@ class ProductScraper:
             'gallery': gallery
         }
 
-    def basalam_products_details_extractor(self, seller_url, driver='firefox'):
+    def basalam_products_details_extractor(self, seller_url, sid, driver='firefox'):
         if driver == 'firefox':
             driver = self.init_firefox_driver()
         elif driver == 'chrome':
@@ -206,12 +207,13 @@ class ProductScraper:
                 start_time = time.time()
                 details = self.basalam_product_details_dict(item['link'], driver)
                 details['id'] = item['id']
+                details['seller_id'] = sid
                 details['link'] = item['link']
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
                 self.write_json(prefix=seller_id, type='products_details', data=products_details)
 
-                self.db.product_create(details)
+                # self.db.product_create(details)
 
                 end_time = time.time()
                 elapsed_time = end_time - start_time

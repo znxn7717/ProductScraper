@@ -3,15 +3,28 @@ from Test import ProductScraper
 
 # WebDriverWait 
 
-scraper = ProductScraper()
-seller_url = 'https://basalam.com/arayeshii_artemis'
+# scraper = ProductScraper()
+# seller_url = 'https://basalam.com/arayeshii_artemis'
 # seller_url = 'https://basalam.com/khaneyesalamat'
 # seller_url = 'https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA'
 # seller_url = 'https://www.digikala.com/seller/5a6gg/'
 # seller_url = 'https://www.digikala.com/seller/c7kvk/'
-scraper.basalam_products_details_extractor(seller_url, driver='firefox')
+# scraper.basalam_products_details_extractor(seller_url, 'SDAASF2', driver='firefox')
 # scraper.torob_products_details_extractor(seller_url, driver='firefox')
 # scraper.digikala_products_details_extractor(seller_url, driver='chrome')
+
+# آیا شما یک ربات هستید؟
+# /html/body/div/div[1]/div/div[1]
+# .text-5xl
+# checkbox
+# /div/div/div[1]/div/label/input
+# .cb-lb > input:nth-child(1)
+
+
+text = "آرایشی و بهداشتی>مراقبت پوست، مو و بدن>خالکوبی زیبا>زندگی خوب>پاک کننده آرایش و صورت"
+
+print(text.split(">")[-1])
+
 
 
         # def scroll_to_end(driver):
