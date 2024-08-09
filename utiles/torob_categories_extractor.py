@@ -48,7 +48,7 @@ def get_product_data(browse_id, existing_categories):
     return None
 
 def main():
-    json_file = "torob_categories.json"
+    json_file = "data/torob_categories.json"
     
     if os.path.exists(json_file):
         with open(json_file, "r", encoding="utf-8") as file:

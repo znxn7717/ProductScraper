@@ -35,7 +35,7 @@ def get_product_data(product_id):
 def main():
     results = []
     try:
-        with open('digikala_categories.json', 'r', encoding='utf-8') as file:
+        with open('data/digikala_categories.json', 'r', encoding='utf-8') as file:
             results = json.load(file)
     except FileNotFoundError:
         pass
@@ -49,7 +49,7 @@ def main():
         if pid and pgroup and pgroup not in seen_groups:
             results.append({'pid': pid, 'product_group': pgroup})
             seen_groups.add(pgroup)
-            with open('digikala_categories.json', 'w', encoding='utf-8') as file:
+            with open('data/digikala_categories.json', 'w', encoding='utf-8') as file:
                 json.dump(results, file, ensure_ascii=False, indent=4)
         
         time.sleep(1)

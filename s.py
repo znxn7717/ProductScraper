@@ -1,5 +1,7 @@
 # from Scraper import ProductScraper
-from Test import ProductScraper
+# from Test import ProductScraper
+# from utiles.categories_sorter import categories_sorter
+from utiles.categories_regulator import categories_fuzz
 
 # WebDriverWait 
 
@@ -21,11 +23,8 @@ from Test import ProductScraper
 # .cb-lb > input:nth-child(1)
 
 
-text = "آرایشی و بهداشتی>مراقبت پوست، مو و بدن>خالکوبی زیبا>زندگی خوب>پاک کننده آرایش و صورت"
-
-print(text.split(">")[-1])
-
-
+path = 'data/sorted_torob_categories.json'
+categories_fuzz(path)
 
         # def scroll_to_end(driver):
         #     action = ActionChains(driver)
