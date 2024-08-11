@@ -1,7 +1,7 @@
 # from Scraper import ProductScraper
 # from Test import ProductScraper
 # from utiles.categories_sorter import categories_sorter
-from utiles.categories_regulator import categories_fuzz
+from utiles.categories_regulator import categories_fuzz, filter_by_string, categories_to_list, generate_report, merge_json
 
 # WebDriverWait 
 
@@ -23,8 +23,34 @@ from utiles.categories_regulator import categories_fuzz
 # .cb-lb > input:nth-child(1)
 
 
-path = 'data/sorted_torob_categories.json'
-categories_fuzz(path)
+
+# inpath = "data/sorted_torob_categories.json"
+# outpath = "data/listed_sorted_torob_categories.json"
+# categories_to_list(inpath, outpath)
+
+# categories_fuzz("data/listed_sorted_torob_categories.json", threshold=100)
+
+# path = "data/notused_listed_sorted_torob_categories.json"
+# filter_by_string(path=path, string="موتور سیکلت")
+
+# generate_report()
+
+merge_json('fuzzed_listed_sorted_torob_categories.json', 'data/fuzzed_listed_sorted_torob_categories.json', 'data/fuzzed_listed_sorted_torob_categories.json')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         # def scroll_to_end(driver):
         #     action = ActionChains(driver)
