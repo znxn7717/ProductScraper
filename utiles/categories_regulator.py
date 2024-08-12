@@ -2,37 +2,38 @@ import os
 import json
 # import torch
 import numpy as np
+import pandas as pd
 from rapidfuzz import process
 from collections import defaultdict
 # from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-def generate_report():
-    with open('data/basalam_categories.json', 'r', encoding='utf-8') as file:
+def generate_report(target):
+    with open('data/reference/basalam_categories.json', 'r', encoding='utf-8') as file:
         basalam_categories = json.load(file)
-    with open('data/notused_listed_sorted_torob_categories.json', 'r', encoding='utf-8') as file:
-        notused_torob_categories = json.load(file)
-    with open('data/listed_sorted_torob_categories.json', 'r', encoding='utf-8') as file:
-        listed_torob_categories = json.load(file)
-    with open('data/fuzzed_listed_sorted_torob_categories.json', 'r', encoding='utf-8') as file:
-        fuzzed_torob_categories = json.load(file)
-    duplicate_keys = [key for key, count in defaultdict(int, ((key, 1) for key in fuzzed_torob_categories)).items() if count > 1]
+    with open(f'data/listed_sorted_{target}_categories.json', 'r', encoding='utf-8') as file:
+        listed_categories = json.load(file)
+    with open(f'data/listed_sorted_{target}_categories.json', 'r', encoding='utf-8') as file:
+        listed_categories = json.load(file)
+    with open(f'data/fuzzed_listed_sorted_{target}_categories.json', 'r', encoding='utf-8') as file:
+        fuzzed_categories = json.load(file)
+    duplicate_keys = [key for key, count in defaultdict(int, ((key, 1) for key in fuzzed_categories)).items() if count > 1]
     value_count = defaultdict(int)
-    for values in fuzzed_torob_categories.values():
+    for values in fuzzed_categories.values():
         for value in values:
             value_count[value] += 1
     duplicate_values = [value for value, count in value_count.items() if count > 1]
-    unused_basalam_categories = [item for item in basalam_categories if item not in fuzzed_torob_categories]
-    extra_fuzzed_keys = [key for key in fuzzed_torob_categories if key not in basalam_categories]
-    unused_notused_values = [item for item in notused_torob_categories if item not in value_count]
-    extra_fuzzed_values = [value for value in value_count if value not in listed_torob_categories]
+    unused_basalam_categories = [item for item in basalam_categories if item not in fuzzed_categories]
+    extra_fuzzed_keys = [key for key in fuzzed_categories if key not in basalam_categories]
+    unused_listed_values = [item for item in listed_categories if item not in value_count]
+    extra_fuzzed_values = [value for value in value_count if value not in listed_categories]
     report = {
         "duplicate_keys": duplicate_keys,
         "duplicate_values": duplicate_values,
         "unused_basalam_keys": unused_basalam_categories,
         "extra_fuzzed_keys": extra_fuzzed_keys,
-        "unused_notused_values": unused_notused_values,
+        "unused_listed_values": unused_listed_values,
         "extra_fuzzed_values": extra_fuzzed_values,
     }
     with open("data/report.json", "w", encoding='utf-8') as file:
@@ -40,8 +41,8 @@ def generate_report():
     print("گزارش با موفقیت تولید شد و در فایل '{}' ذخیره گردید.".format("data/report.json"))
 
 
-def merge_json(path1, path2, pathr):
-    with open('data/basalam_categories.json', 'r', encoding='utf-8') as f_cat:
+def merge_json(path1, path2):
+    with open('data/reference/basalam_categories.json', 'r', encoding='utf-8') as f_cat:
         category_order = json.load(f_cat)
     with open(path1, 'r', encoding='utf-8') as f1, open(path2, 'r', encoding='utf-8') as f2:
         data1 = json.load(f1)
@@ -50,7 +51,7 @@ def merge_json(path1, path2, pathr):
     for key in set(data1.keys()).union(data2.keys()):
         merged_data[key] = sorted(list(set(data1.get(key, []) + data2.get(key, []))))
     sorted_merged_data = {key: merged_data[key] for key in category_order if key in merged_data}
-    with open(pathr, 'w', encoding='utf-8') as f_out:
+    with open(path2, 'w', encoding='utf-8') as f_out:
         json.dump(sorted_merged_data, f_out, ensure_ascii=False, indent=4)
 
 
@@ -89,7 +90,7 @@ def categories_sorter(path):
 
 def categories_fuzz(path, threshold=87):
     base_name = os.path.splitext(os.path.basename(path))[0]
-    with open('data/basalam_categories.json', 'r', encoding='utf-8') as f:
+    with open('data/reference/basalam_categories.json', 'r', encoding='utf-8') as f:
         categories = json.load(f)        
     final_dict = {category: [] for category in categories}
     unused_products = []
@@ -123,7 +124,7 @@ def categories_hoosh(path, threshold=0.85):
     model_name = "HooshvareLab/bert-fa-base-uncased"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModel.from_pretrained(model_name)
-    with open('data/basalam_categories.json', 'r', encoding='utf-8') as f:
+    with open('data/reference/basalam_categories.json', 'r', encoding='utf-8') as f:
         categories = json.load(f)
     final_dict = {category: [] for category in categories}
     unused_products = []

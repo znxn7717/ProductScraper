@@ -1,7 +1,7 @@
 # from Scraper import ProductScraper
 # from Test import ProductScraper
 # from utiles.categories_sorter import categories_sorter
-from utiles.categories_regulator import categories_fuzz, filter_by_string, categories_to_list, generate_report, merge_json
+from utiles.categories_regulator import categories_fuzz, filter_by_string, categories_to_list, generate_report, merge_json, categories_sorter
 
 # WebDriverWait 
 
@@ -22,20 +22,21 @@ from utiles.categories_regulator import categories_fuzz, filter_by_string, categ
 # /div/div/div[1]/div/label/input
 # .cb-lb > input:nth-child(1)
 
+# path= "data/digikala_categories.json"
+# categories_sorter(path)
 
-
-# inpath = "data/sorted_torob_categories.json"
-# outpath = "data/listed_sorted_torob_categories.json"
+# inpath = "data/sorted_digikala_categories.json"
+# outpath = "data/listed_sorted_digikala_categories.json"
 # categories_to_list(inpath, outpath)
 
-# categories_fuzz("data/listed_sorted_torob_categories.json", threshold=100)
+# categories_fuzz("data/listed_sorted_digikala_categories.json", threshold=100)
 
-# path = "data/notused_listed_sorted_torob_categories.json"
-# filter_by_string(path=path, string="موتور سیکلت")
+# path = "data/notused_listed_sorted_digikala_categories.json"
+# filter_by_string(path=path, string="زنانه")
 
-# generate_report()
+generate_report('torob')
 
-merge_json('fuzzed_listed_sorted_torob_categories.json', 'data/fuzzed_listed_sorted_torob_categories.json', 'data/fuzzed_listed_sorted_torob_categories.json')
+# merge_json('fuzzed_listed_sorted_digikala_categories.json', 'data/fuzzed_listed_sorted_digikala_categories.json')
 
 
 
