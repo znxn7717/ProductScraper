@@ -2,6 +2,7 @@
 # from Test import ProductScraper
 # from utiles.categories_sorter import categories_sorter
 from utiles.categories_regulator import categories_fuzz, filter_by_string, categories_to_list, generate_report, merge_json, categories_sorter
+from utiles.digikala_data_extractor import main
 
 # WebDriverWait 
 
@@ -29,16 +30,16 @@ from utiles.categories_regulator import categories_fuzz, filter_by_string, categ
 # outpath = "data/listed_sorted_digikala_categories.json"
 # categories_to_list(inpath, outpath)
 
-# categories_fuzz("data/listed_sorted_digikala_categories.json", threshold=100)
+# categories_fuzz("data/listed_sorted_torob_categories.json", threshold=100)
 
 # path = "data/notused_listed_sorted_digikala_categories.json"
 # filter_by_string(path=path, string="زنانه")
 
-generate_report('torob')
+# generate_report('digikala')
 
 # merge_json('fuzzed_listed_sorted_digikala_categories.json', 'data/fuzzed_listed_sorted_digikala_categories.json')
 
-
+main(start_id=0, end_id=4250000, tid=1, checkpoint_file='checkpoint.json')
 
 
 
