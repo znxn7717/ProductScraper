@@ -8,6 +8,7 @@ from Product import Database
 from dotenv import load_dotenv
 from selenium import webdriver
 from urllib.parse import unquote
+from utiles.digikala_data_extractor import get_product_data
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -68,14 +69,22 @@ class ProductScraper:
             raise ValueError("No driver path specified.")
 
     def write_json(self, prefix, type, data):
-        with open(f'{prefix}_{type}.json', 'w', encoding='utf-8') as file:
+        with open(f'data/{prefix}_{type}.json', 'w', encoding='utf-8') as file:
             json.dump(data, file, ensure_ascii=False, indent=2)
 
     def read_json(self, prefix, type):
-        with open(f'{prefix}_{type}.json', 'r', encoding='utf-8') as file:
+        with open(f'data/{prefix}_{type}.json', 'r', encoding='utf-8') as file:
             return json.load(file)
 
-    def basalam_scroll_to_end(self, driver, max_attempts=25):
+    def find_key_by_value(self, path, value):
+        with open(path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        for key, values in data.items():
+            if value in values:
+                return key
+        return "سایر"
+
+    def basalam_scroll_to_end(self, driver, max_attempts=100):
         action = ActionChains(driver)
         unchanged_attempts = 0
         last_count = 0
@@ -113,14 +122,22 @@ class ProductScraper:
         elif driver == 'chrome':
             driver = self.init_chrome_driver()
         seller_id = seller_url.rstrip('/').split('/')[-1]
-        if not os.path.exists(f'{seller_id}_products_details.json'):
+        if not os.path.exists(f'data/{seller_id}_products_details.json'):
             existing_links = []
-            if os.path.exists(f'{seller_id}_links.json'):
+            if os.path.exists(f'data/{seller_id}_links.json'):
                 existing_links = self.read_json(prefix=seller_id, type='links')
             last_id = existing_links[-1]['id'] if existing_links else 0
             driver.get(seller_url)
             self.basalam_scroll_to_end(driver)
-            time.sleep(3)
+            try:
+                WebDriverWait(driver, 3).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div')
+                    )
+                )
+            except Exception as e:
+                print(f"Error waiting for elements: {e}")
+                return
             new_links = []
             section = driver.find_elements(By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div')
             for i in range(last_id + 1, len(section) + 1):
@@ -143,17 +160,25 @@ class ProductScraper:
         seller_id = seller_url.rstrip('/').split('/')[-2]
         decoded_segment = unquote(seller_id)
         seller_id = decoded_segment
-        if not os.path.exists(f'{seller_id}_products_details.json'):
+        if not os.path.exists(f'data/{seller_id}_products_details.json'):
             existing_links = []
-            if os.path.exists(f'{seller_id}_links.json'):
+            if os.path.exists(f'data/{seller_id}_links.json'):
                 existing_links = self.read_json(prefix=seller_id, type='links')
             last_id = existing_links[-1]['id'] if existing_links else 0
             driver.get(seller_url)
             self.torob_scroll_to_end(driver)
-            time.sleep(3)
+            try:
+                WebDriverWait(driver, 3).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div')
+                    )
+                )
+            except Exception as e:
+                print(f"Error waiting for elements: {e}")
+                return
             new_links = []
             section = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div').find_elements(By.TAG_NAME, 'a')
-            for i in range(1, len(section) + 1):
+            for i in range(last_id + 1, len(section) + 1):
                 try:
                     link = driver.find_element(By.XPATH, f'/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div/div[{i}]/a').get_attribute('href')
                     new_links.append({'id': i, 'link': link})
@@ -171,22 +196,30 @@ class ProductScraper:
         elif driver == 'chrome':
             driver = self.init_chrome_driver()
         seller_id = seller_url.rstrip('/').split('/')[-1]
-        if not os.path.exists(f'{seller_id}_products_details.json'):
+        if not os.path.exists(f'data/{seller_id}_products_details.json'):
             existing_links = []
-            if os.path.exists(f'{seller_id}_links.json'):
+            if os.path.exists(f'data/{seller_id}_links.json'):
                 existing_links = self.read_json(prefix=seller_id, type='links')
             last_id = existing_links[-1]['id'] if existing_links else 0
             driver.get(seller_url)
-            time.sleep(6)
+            try:
+                WebDriverWait(driver, 6).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[3]/div/section[1]/div[1]/div/div/div/div[3]/span')
+                    )
+                )
+            except Exception as e:
+                print(f"Error waiting for elements: {e}")
+                return
             products_num = int(re.sub(r'\D', '', driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[3]/div/section[1]/div[1]/div/div/div/div[3]/span').text))
             page_len = 500 if math.ceil(products_num / 20) > 500 else math.ceil(products_num / 20)
             if page_len <= 10:
                 self.digikala_scroll_to_end(driver)
                 new_links = []
-                section = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div').find_elements(By.TAG_NAME, 'a')
-                for i in range(1, len(section) + 1):
+                section = driver.find_element(By.CSS_SELECTOR, '.product-list_ProductList__pagesContainer__zAhrX').find_elements(By.TAG_NAME, 'a')
+                for i in range(last_id + 1, len(section) + 1):
                     try:
-                        link = driver.find_element(By.XPATH, f'/html/body/div/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div/div[1]/div/div[{i}]/a').get_attribute('href')
+                        link = driver.find_element(By.CSS_SELECTOR, f'div.product-list_ProductList__item__LiiNI:nth-child({i}) > a:nth-child(1)').get_attribute('href')
                         new_links.append({'id': i, 'link': link})
                     except Exception as e:
                         print(f"Error occurred at link {i}: {e}")
@@ -199,7 +232,15 @@ class ProductScraper:
                 start_page = (last_id // 20) + 1  # Assuming each page has up to 20 links
                 current_id = last_id
                 driver.get(f'{seller_url}?page={start_page}')
-                time.sleep(6)
+                try:
+                    WebDriverWait(driver, 6).until(
+                        EC.presence_of_element_located(
+                            (By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[3]/div/section[1]/div[1]/div/div/div/div[3]/span')
+                        )
+                    )
+                except Exception as e:
+                    print(f"Error waiting for elements: {e}")
+                    return
                 def extract_links(start_id):
                     new_links = []
                     elements = driver.find_elements(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[3]/div/section[1]/div[2]//a')
@@ -283,6 +324,8 @@ class ProductScraper:
             for i in range(2, 21):
                 try:
                     images = driver.find_elements(By.XPATH, f'/html/body/div[8]/div/div[1]/div/div/div/div/div/div[2]/div/div[{i}]//img')
+                    if not images:
+                        images = driver.find_elements(By.XPATH, f'/html/body/div[9]/div/div[1]/div/div/div/div/div/div[2]/div/div[{i}]//img')
                     for img in images:
                         gallery.append(img.get_attribute('src').replace("_256X256X70.jpg", ""))
                 except Exception as e:
@@ -312,7 +355,8 @@ class ProductScraper:
         try:
             product_group = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[1]/div[1]/div/div').text
             product_group = product_group.replace("ترب\n", "").replace("\n", ">")
-            product_group = product_group.rsplit(">", 1)[0]
+            product_group = self.find_key_by_value("data/reference/fuzzed_listed_sorted_torob_categories.json", product_group)
+            # product_group = product_group.rsplit(">", 1)[0]
         except:
             product_group = None
         try:
@@ -368,52 +412,76 @@ class ProductScraper:
             'gallery': gallery
         }
 
-    def digikala_product_details_dict(self, product_url, driver='chrome'):
-        if driver == 'firefox':
-            driver = self.init_firefox_driver()
-        elif driver == 'chrome':
-            driver = self.init_chrome_driver()
-        driver.get(product_url)
-        time.sleep(4)
-        try:
-            product_group = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[1]/nav/div/div/div[1]').text
-            product_group = product_group.replace("دیجی‌کالا/\n", "").replace("/\n", ">")
-            # product_group = product_group.rsplit(">", 1)[0]
-        except:
-            product_group = None
-        try:
-            title = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[2]/div[1]/div/h1').text
-        except:
-            title = None
-        try:
-            price = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[2]/div[2]/div[4]/div/div[4]/div/div/div/div[1]/div[2]/div[1]/span').text
-            persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
-            price = re.sub(r'\D', '', price).translate(persian_to_english_digits)
-            stock = 1
-        except:
-            price = None
-            stock = 0
-        try:
-            main_pic_link = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div/picture/img').get_attribute('src')
-            main_pic_alt = title
-            main_pic_link = main_pic_link.replace("?x-oss-process=image/resize,m_lfit,h_800,w_800/quality,q_90", "")
-        except:
-            main_pic_link = None
-            main_pic_alt = None
-        try:
-            main_pic = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div/picture/img')
-            main_pic.click()
-            time.sleep(1)
-            gallery = []
-            for i in range(2, 21):
-                try:
-                    images = driver.find_elements(By.CSS_SELECTOR, f'div.bg-white:nth-child(1) > div:nth-child({i}) > div:nth-child(1) > picture:nth-child(1) > img:nth-child(3)')
-                    for img in images:
-                        gallery.append(img.get_attribute('src').replace("?x-oss-process=image/resize,m_lfit,h_800,w_800/quality,q_90", ""))
-                except Exception as e:
-                    print(f'Error processing gallery {i}: {e}')
-        except:
-            gallery = None
+    def digikala_product_details_dict(self, product_url, driver='chrome', api=True):
+        if api:
+            try:
+                if re.search(r'-(\d+)', product_url):
+                    pid = re.search(r'-(\d+)', product_url).group(1)
+                data = get_product_data(pid)
+                product_group = data[5]
+                product_group = self.find_key_by_value("data/reference/fuzzed_listed_sorted_digikala_categories.json", product_group)
+                title = data[1]
+                if data[8]:
+                        price = str(int(data[8]/10))
+                        stock = 1
+                else:
+                        price = data[8]
+                        stock = 0
+                main_pic_link = data[6]
+                main_pic_alt = title
+                gallery = data[7]
+                gallery = [link.split('?')[0] for link in gallery]
+                # time.sleep(1)
+            except Exception as e:
+                print(f'Error processing api: {e}')
+                product_group, title, price, stock, main_pic_link, main_pic_alt, gallery = (None,) * 7
+        else:
+            if driver == 'firefox':
+                driver = self.init_firefox_driver()
+            elif driver == 'chrome':
+                driver = self.init_chrome_driver()
+            driver.get(product_url)
+            time.sleep(4)
+            try:
+                product_group = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[1]/nav/div/div/div[1]').text
+                product_group = product_group.replace("دیجی‌کالا/\n", "").replace("/\n", ">")
+                product_group = self.find_key_by_value("data/reference/fuzzed_listed_sorted_digikala_categories.json", product_group)
+                # product_group = product_group.rsplit(">", 1)[0]
+            except:
+                product_group = None
+            try:
+                title = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[2]/div[1]/div/h1').text
+            except:
+                title = None
+            try:
+                price = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[2]/div[2]/div[4]/div/div[4]/div/div/div/div[1]/div[2]/div[1]/span').text
+                persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+                price = re.sub(r'\D', '', price).translate(persian_to_english_digits)
+                stock = 1
+            except:
+                price = None
+                stock = 0
+            try:
+                main_pic_link = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div/picture/img').get_attribute('src')
+                main_pic_alt = title
+                main_pic_link = main_pic_link.replace("?x-oss-process=image/resize,m_lfit,h_800,w_800/quality,q_90", "")
+            except:
+                main_pic_link = None
+                main_pic_alt = None
+            try:
+                main_pic = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div/picture/img')
+                main_pic.click()
+                time.sleep(1)
+                gallery = []
+                for i in range(2, 21):
+                    try:
+                        images = driver.find_elements(By.CSS_SELECTOR, f'div.bg-white:nth-child(1) > div:nth-child({i}) > div:nth-child(1) > picture:nth-child(1) > img:nth-child(3)')
+                        for img in images:
+                            gallery.append(img.get_attribute('src').replace("?x-oss-process=image/resize,m_lfit,h_800,w_800/quality,q_90", ""))
+                    except Exception as e:
+                        print(f'Error processing gallery {i}: {e}')
+            except:
+                gallery = None
         return {
             'id': None,
             'seller_id': None,
@@ -436,12 +504,14 @@ class ProductScraper:
         self.basalam_links_extractor(seller_url.rstrip('/'), driver)
         seller_id = seller_url.rstrip('/').split('/')[-1]
         existing_links = []
-        if os.path.exists(f'{seller_id}_links.json'):
+        if os.path.exists(f'data/{seller_id}_links.json'):
             existing_links = self.read_json(prefix=seller_id, type='links')
         existing_products_details = []
-        if os.path.exists(f'{seller_id}_products_details.json'):
+        if os.path.exists(f'data/{seller_id}_products_details.json'):
             existing_products_details = self.read_json(prefix=seller_id, type='products_details')
         last_id = existing_products_details[-1]['id'] if existing_products_details else 0
+        for i in existing_products_details:
+            self.db.product_create(i)
         new_products_details = []
         for item in existing_links:
             if item['id'] > last_id:
@@ -453,6 +523,7 @@ class ProductScraper:
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
                 self.write_json(prefix=seller_id, type='products_details', data=products_details)
+                self.db.product_create(details)
                 end_time = time.time()
                 elapsed_time = end_time - start_time
                 if elapsed_time > 12:
@@ -475,12 +546,14 @@ class ProductScraper:
         decoded_segment = unquote(seller_id)
         seller_id = decoded_segment
         existing_links = []
-        if os.path.exists(f'{seller_id}_links.json'):
+        if os.path.exists(f'data/{seller_id}_links.json'):
             existing_links = self.read_json(prefix=seller_id, type='links')
         existing_products_details = []
-        if os.path.exists(f'{seller_id}_products_details.json'):
+        if os.path.exists(f'data/{seller_id}_products_details.json'):
             existing_products_details = self.read_json(prefix=seller_id, type='products_details')
         last_id = existing_products_details[-1]['id'] if existing_products_details else 0
+        for i in existing_products_details:
+            self.db.product_create(i)
         new_products_details = []
         for item in existing_links:
             if item['id'] > last_id:
@@ -492,6 +565,7 @@ class ProductScraper:
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
                 self.write_json(prefix=seller_id, type='products_details', data=products_details)
+                self.db.product_create(details)
                 end_time = time.time()
                 elapsed_time = end_time - start_time
                 if elapsed_time > 15:
@@ -512,12 +586,14 @@ class ProductScraper:
         self.digikala_links_extractor(seller_url.rstrip('/'), driver)
         seller_id = seller_url.rstrip('/').split('/')[-1]
         existing_links = []
-        if os.path.exists(f'{seller_id}_links.json'):
+        if os.path.exists(f'data/{seller_id}_links.json'):
             existing_links = self.read_json(prefix=seller_id, type='links')
         existing_products_details = []
-        if os.path.exists(f'{seller_id}_products_details.json'):
+        if os.path.exists(f'data/{seller_id}_products_details.json'):
             existing_products_details = self.read_json(prefix=seller_id, type='products_details')
         last_id = existing_products_details[-1]['id'] if existing_products_details else 0
+        for i in existing_products_details:
+            self.db.product_create(i)
         new_products_details = []
         for item in existing_links:
             if item['id'] > last_id:

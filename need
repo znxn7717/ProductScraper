@@ -1,3 +1,5 @@
 .venv\Scripts\activate
 
 pip freeze > requirements.txt
+
+uvicorn api:app --reload

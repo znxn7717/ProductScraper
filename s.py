@@ -1,20 +1,57 @@
-# from Scraper import ProductScraper
+from Scraper import ProductScraper
 # from Test import ProductScraper
 # from utiles.categories_sorter import categories_sorter
-from utiles.categories_regulator import categories_fuzz, filter_by_string, categories_to_list, generate_report, merge_json, categories_sorter
-from utiles.digikala_data_extractor import main
 
 # WebDriverWait 
 
-# scraper = ProductScraper()
+scraper = ProductScraper()
 # seller_url = 'https://basalam.com/arayeshii_artemis'
 # seller_url = 'https://basalam.com/khaneyesalamat'
 # seller_url = 'https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA'
 # seller_url = 'https://www.digikala.com/seller/5a6gg/'
-# seller_url = 'https://www.digikala.com/seller/c7kvk/'
+seller_url = 'https://www.digikala.com/seller/c7kvk/'
 # scraper.basalam_products_details_extractor(seller_url, 'SDAASF2', driver='firefox')
 # scraper.torob_products_details_extractor(seller_url, driver='firefox')
-# scraper.digikala_products_details_extractor(seller_url, driver='chrome')
+scraper.digikala_products_details_extractor(seller_url, 'SDAASF2', driver='chrome')
+
+
+
+
+
+# import re
+# from utiles.digikala_data_extractor import get_product_data
+# url = "https://www.digikala.com/product/dkp-4899916/%DA%A9%D8%AA-%D8%AA%DA%A9-%D9%85%D8%B1%D8%AF%D8%A7%D9%86%D9%87-%D8%B1%DB%8C%D8%B4%D9%86%D8%B1-%DA%A9%D8%AF-l128/"
+
+# if re.search(r'-(\d+)', url):
+#         pid = re.search(r'-(\d+)', url).group(1)
+# data = get_product_data(pid)
+# product_group = data[5]
+# title = data[1]
+# if data[8]:
+#         price = str(int(data[8]/10))
+#         stock = 1
+# else:
+#         price = data[8]
+#         stock = None
+# main_pic_link = data[6]
+# main_pic_alt = title
+# gallery = data[7]
+# gallery = [link.split('?')[0] for link in gallery]
+# json = {
+#             'id': None,
+#             'seller_id': None,
+#             'link': None,
+#             'product_group': product_group,
+#             'title': title,
+#             'stock': stock,
+#             'price': price,
+#             'main_pic_link': main_pic_link,
+#             'main_pic_alt': main_pic_alt,
+#             'gallery': gallery
+#         }
+
+# print(json)
+
 
 # آیا شما یک ربات هستید؟
 # /html/body/div/div[1]/div/div[1]
@@ -22,6 +59,10 @@ from utiles.digikala_data_extractor import main
 # checkbox
 # /div/div/div[1]/div/label/input
 # .cb-lb > input:nth-child(1)
+
+
+# from utiles.categories_regulator import categories_fuzz, filter_by_string, categories_to_list, generate_report, merge_json, categories_sorter
+# from utiles.digikala_data_extractor import main
 
 # path= "data/digikala_categories.json"
 # categories_sorter(path)
@@ -39,7 +80,7 @@ from utiles.digikala_data_extractor import main
 
 # merge_json('fuzzed_listed_sorted_digikala_categories.json', 'data/fuzzed_listed_sorted_digikala_categories.json')
 
-main(start_id=0, end_id=4250000, tid=1, checkpoint_file='checkpoint.json')
+# main(start_id=0, end_id=4250000, tid=1, checkpoint_file='checkpoint.json')
 
 
 

@@ -27,8 +27,9 @@ class Database:
                 cursor = self.connection.cursor()
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS products (
-                        id INT PRIMARY KEY,
-                        link VARCHAR(255),
+                        id INT PRIMARY KEY AUTO_INCREMENT,
+                        seller_id VARCHAR(255),
+                        link VARCHAR(255) UNIQUE,
                         product_group VARCHAR(255),
                         title VARCHAR(255),
                         stock INT,
@@ -52,9 +53,10 @@ class Database:
             if self.connection.is_connected():
                 cursor = self.connection.cursor()
                 query = """
-                    INSERT INTO products (id, link, product_group, title, stock, price, main_pic_link, main_pic_alt, gallery)
+                    INSERT INTO products (seller_id, link, product_group, title, stock, price, main_pic_link, main_pic_alt, gallery)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
+                        seller_id=VALUES(seller_id),
                         link=VALUES(link),
                         product_group=VALUES(product_group),
                         title=VALUES(title),
@@ -66,14 +68,17 @@ class Database:
                         updated_at=CURRENT_TIMESTAMP
                 """
                 cursor.execute(query, (
-                    details['id'], details['link'], details['product_group'], details['title'],
+                    details['seller_id'], details['link'], details['product_group'], details['title'],
                     details['stock'], details['price'], details['main_pic_link'], details['main_pic_alt'],
                     json.dumps(details['gallery'])
                 ))
                 self.connection.commit()
                 cursor.close()
         except Error as e:
-            print(f"Error while inserting product: {e}")
+            if "Duplicate entry" in str(e):
+                print(f"Duplicate entry for link: {details['link']}")
+            else:
+                print(f"Error while inserting product: {e}")
 
     def close(self):
         if self.connection.is_connected():

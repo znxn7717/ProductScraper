@@ -37,10 +37,13 @@ def get_product_data(product_id):
             brand_fa = product_brand.get('title_fa', '')
             brand_en = product_brand.get('title_en', '')
 
-            return product_id, product_title_fa, product_title_en, brand_fa, brand_en, product_group, main_image_url, list_image_urls
+            data_layer = data.get('data_layer', {})
+            price = data_layer['ecommerce']['detail']['products'][0]['price']
+
+            return product_id, product_title_fa, product_title_en, brand_fa, brand_en, product_group, main_image_url, list_image_urls, price
     except requests.RequestException as e:
         print(f"خطا در ارسال درخواست: {e}")
-    return None, None, None, None, None, None, None, None
+    return None, None, None, None, None, None, None, None, None
 
 def load_checkpoint(checkpoint_file):
     if os.path.exists(checkpoint_file):
