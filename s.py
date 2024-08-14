@@ -1,18 +1,32 @@
-from Scraper import ProductScraper
+# from Scraper import ProductScraper
 # from Test import ProductScraper
 # from utiles.categories_sorter import categories_sorter
 
 # WebDriverWait 
 
-scraper = ProductScraper()
+# scraper = ProductScraper()
 # seller_url = 'https://basalam.com/arayeshii_artemis'
 # seller_url = 'https://basalam.com/khaneyesalamat'
 # seller_url = 'https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA'
 # seller_url = 'https://www.digikala.com/seller/5a6gg/'
-seller_url = 'https://www.digikala.com/seller/c7kvk/'
+# seller_url = 'https://www.digikala.com/seller/c7kvk/'
 # scraper.basalam_products_details_extractor(seller_url, 'SDAASF2', driver='firefox')
 # scraper.torob_products_details_extractor(seller_url, driver='firefox')
-scraper.digikala_products_details_extractor(seller_url, 'SDAASF2', driver='chrome')
+# scraper.digikala_products_details_extractor(seller_url, 'SDAASF2', driver='chrome')
+
+
+
+
+
+from utiles.torob_sellers_extractor import torob_links_extractor
+
+torob_links_extractor()
+
+
+
+
+
+
 
 
 
@@ -51,6 +65,23 @@ scraper.digikala_products_details_extractor(seller_url, 'SDAASF2', driver='chrom
 #         }
 
 # print(json)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # آیا شما یک ربات هستید؟
