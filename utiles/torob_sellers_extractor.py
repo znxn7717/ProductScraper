@@ -19,7 +19,7 @@ def torob_links_extractor():
             driver.get(f'https://torob.com/shop/{i}/')
             wait = WebDriverWait(driver, 3)
             header_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(1) > td:nth-child(1) > h2:nth-child(1)')))
-            if header_element.text == 'مجوزها و اعتبار':
+            if header_element.text in ['مجوزها و اعتبار', 'سابقه همکاری با ترب']:
                 try:
                     seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > h1:nth-child(1)'))).text
                 except Exception:
@@ -32,34 +32,12 @@ def torob_links_extractor():
                     seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#province-city'))).text
                 except Exception:
                     seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.ShopInfoHeader_white__XJYKB'))).text
-                history_of_cooperation = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)'))).text
-                performance_score = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(3) > td:nth-child(2)'))).text
-                contact_information = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(8) > td:nth-child(2)'))).text    
-                new_sellers_details.append({
-                    'id': i,
-                    'sn': seller_name,
-                    'su': seller_url,
-                    'sl': seller_location,
-                    'hof': history_of_cooperation,
-                    'ps': performance_score,
-                    'ci': contact_information
-                })
-            elif header_element.text == 'سابقه همکاری با ترب':
-                try:
-                    seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > h1:nth-child(1)'))).text
-                except Exception:
-                    seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_shopName__6Vmrc'))).text
-                try:
-                    seller_url = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > a:nth-child(2)'))).get_attribute('href')
-                except Exception:
-                    seller_url = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a.ShopInfoHeader_white__XJYKB'))).get_attribute('href')
-                try:
-                    seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#province-city'))).text
-                except Exception:
-                    seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.ShopInfoHeader_white__XJYKB'))).text
-                history_of_cooperation = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(1) > td:nth-child(2)'))).text
-                performance_score = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)'))).text
-                contact_information = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(7) > td:nth-child(2)'))).text    
+                history_of_cooperation_selector = 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(1) > td:nth-child(2)'
+                performance_score_selector = 'tr.jsx-637019445:nth-child(3) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)'
+                contact_information_selector = 'tr.jsx-637019445:nth-child(8) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(7) > td:nth-child(2)'
+                history_of_cooperation = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, history_of_cooperation_selector))).text
+                performance_score = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, performance_score_selector))).text
+                contact_information = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, contact_information_selector))).text    
                 new_sellers_details.append({
                     'id': i,
                     'sn': seller_name,
