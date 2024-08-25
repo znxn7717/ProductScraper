@@ -17,6 +17,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import ElementClickInterceptedException, StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 class ProductScraper:
     def __init__(self,
@@ -35,7 +36,8 @@ class ProductScraper:
         self.incognito_mode = incognito_mode
         self.headless_mode = headless_mode
         self.db = Database()
-        self.db.product_connect()
+        self.db.connect_to_database()
+        self.db.setup_product_table()
 
     def init_firefox_driver(self):
         service = Service(self.firefox_driver_path)
@@ -84,18 +86,23 @@ class ProductScraper:
                 return key
         return "سایر"
 
-    def basalam_scroll_to_end(self, driver, max_attempts=100):
+    def basalam_scroll_to_end(self, driver, products_num='auto'):
         action = ActionChains(driver)
-        unchanged_attempts = 0
-        last_count = 0
-        while unchanged_attempts < max_attempts:
-            current_count = len(driver.find_elements(By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div'))
-            if current_count == last_count:
-                unchanged_attempts += 1
-            else:
-                unchanged_attempts = 0
-            last_count = current_count
-            action.scroll_by_amount(0, 10000).perform()
+        products_num = self.basalam_determine_products_num(driver, products_num)
+        getted_num = 0
+        start_time = time.time()
+        while getted_num < products_num:
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+            if elapsed_time > (products_num * 0.2):
+                print(f"Scrolling timeout reached.")
+                break
+            last_product = WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div._KeJul:last-child'))
+            )
+            driver.execute_script("arguments[0].scrollIntoView(true);", last_product)
+            getted_num = len(driver.find_elements(By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div'))
+            print(f'{getted_num} | {products_num}', end="\r")
 
     def torob_scroll_to_end(self, driver):
         action = ActionChains(driver)
@@ -116,41 +123,61 @@ class ProductScraper:
             time.sleep(1)
             getted_num = len(driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[3]/div/section[1]/div[2]').find_elements(By.TAG_NAME, 'a'))
 
-    def basalam_links_extractor(self, seller_url, driver='firefox'):
+    def basalam_determine_products_num(self, driver, products_num):
+        if products_num != 'auto':
+            return products_num
+        else:
+            try:
+                element = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'span.ENqTVF:nth-child(3)')))
+                return int(re.search(r'\d+', element.text).group())
+            except TimeoutException:
+                self.basalam_scroll_to_end(driver)
+                elements = WebDriverWait(driver, 30).until(
+                    EC.presence_of_all_elements_located(
+                        (By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div')
+                    )
+                )
+                return len(elements)
+            except Exception as e:
+                print(f"Unexpected error while determining section length: {e}")
+                return None
+
+    def basalam_links_extractor(self, seller_url, sid, driver='firefox', products_num='auto'):
         if driver == 'firefox':
             driver = self.init_firefox_driver()
         elif driver == 'chrome':
             driver = self.init_chrome_driver()
-        seller_id = seller_url.rstrip('/').split('/')[-1]
-        if not os.path.exists(f'data/{seller_id}_products_details.json'):
-            existing_links = []
-            if os.path.exists(f'data/{seller_id}_links.json'):
-                existing_links = self.read_json(prefix=seller_id, type='links')
-            last_id = existing_links[-1]['id'] if existing_links else 0
-            driver.get(seller_url)
-            self.basalam_scroll_to_end(driver)
-            try:
-                WebDriverWait(driver, 3).until(
-                    EC.presence_of_element_located(
-                        (By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div')
-                    )
-                )
-            except Exception as e:
-                print(f"Error waiting for elements: {e}")
-                return
-            new_links = []
-            section = driver.find_elements(By.XPATH, '/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div')
-            for i in range(last_id + 1, len(section) + 1):
+        target_seller_id = seller_url.rstrip('/').split('/')[-1]
+        existing_links = []
+        if os.path.exists(f'data/{sid+"_"+target_seller_id}_links.json'):
+            existing_links = self.read_json(prefix=sid+"_"+target_seller_id, type='links')
+        last_id = existing_links[-1]['id'] if existing_links else 0
+        if os.path.exists(f'data/{sid+"_"+target_seller_id}_products_details.json'):
+            existing_products_details = self.read_json(prefix=sid+"_"+target_seller_id, type='products_details')
+            products_last_id = existing_products_details[-1]['id'] if existing_products_details else 0
+            products_num = self.basalam_determine_products_num(driver, products_num)
+            if products_num > products_last_id:
+                existing_links = []
+        driver.get(seller_url)
+        products_num = self.basalam_determine_products_num(driver, products_num)
+        start_time = time.time()
+        while len(existing_links) < products_num:
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+            if elapsed_time > (products_num * 0.4):
+                print(f"Timeout reached. Collected {len(existing_links)} links so far.")
+                break
+            self.basalam_scroll_to_end(driver, products_num)
+            for i in range(last_id + 1, products_num + 1):
                 try:
                     link = driver.find_element(By.XPATH, f'/html/body/div/main/div/div[4]/div/div[2]/div[2]/section/div[{i}]/div[1]/a').get_attribute('href')
-                    new_links.append({'id': i, 'link': link})
-                except Exception as e:
-                    print(f"Error occurred at link {i}: {e}")
+                    new_link = {'id': i, 'link': link}
+                    existing_links.append(new_link)
+                    last_id = i
+                    self.write_json(prefix=sid+"_"+target_seller_id, type='links', data=existing_links)
+                except:
                     continue
-            links = existing_links + new_links
-            df = pd.DataFrame(links)
-            print(f"Total number of links: {len(df)}")
-            self.write_json(prefix=seller_id, type='links', data=links)
+        print(f"Total number of links: {len(existing_links)}", end="\r")
 
     def torob_links_extractor(self, seller_url, driver='firefox'):
         if driver == 'firefox':
@@ -288,7 +315,7 @@ class ProductScraper:
             product_group = None
         try:
             title = driver.find_element(By.XPATH, '/html/body/div[1]/main/div/div[2]/section[1]/section[1]/div[1]/div/div/div[2]/div[1]/div[1]/h1').text
-            title = title = re.sub(r'\nجدید', '', title)
+            title = re.sub(r'\nجدید', '', title)
         except:
             title = None
         try:
@@ -334,6 +361,7 @@ class ProductScraper:
             gallery = None
         return {
             'id': None,
+            'is_scraped': None,
             'seller_id': None,
             'link': None,
             'product_group': product_group,
@@ -495,46 +523,63 @@ class ProductScraper:
             'gallery': gallery
         }
 
-    def basalam_products_details_extractor(self, seller_url, sid, driver='firefox'):
+    def basalam_products_details_extractor(self, seller_url, sid, driver='firefox', products_num='auto', progress_callback=None):
         if driver == 'firefox':
             driver = self.init_firefox_driver()
         elif driver == 'chrome':
             driver = self.init_chrome_driver()
         process_start_time = time.time()
-        self.basalam_links_extractor(seller_url.rstrip('/'), driver)
-        seller_id = seller_url.rstrip('/').split('/')[-1]
+        target_seller_id = seller_url.rstrip('/').split('/')[-1]
+        if not os.path.exists(f'data/{sid+"_"+target_seller_id}_links.json'):
+            self.basalam_links_extractor(seller_url.rstrip('/'), sid, driver, products_num)
         existing_links = []
-        if os.path.exists(f'data/{seller_id}_links.json'):
-            existing_links = self.read_json(prefix=seller_id, type='links')
+        if os.path.exists(f'data/{sid+"_"+target_seller_id}_links.json'):
+            existing_links = self.read_json(prefix=sid+"_"+target_seller_id, type='links')
+            links_last_id = existing_links[-1]['id'] if existing_links else 0
+            products_num = self.basalam_determine_products_num(driver, products_num)
+            print(f'links_last_id: {links_last_id}')
+            print(f'products_num: {products_num}')
+            if products_num > links_last_id:
+                self.basalam_links_extractor(sid, seller_url.rstrip('/'), driver, products_num)
+                existing_links = self.read_json(prefix=sid+"_"+target_seller_id, type='links')
+                links_last_id = existing_links[-1]['id'] if existing_links else 0
         existing_products_details = []
-        if os.path.exists(f'data/{seller_id}_products_details.json'):
-            existing_products_details = self.read_json(prefix=seller_id, type='products_details')
-        last_id = existing_products_details[-1]['id'] if existing_products_details else 0
+        if os.path.exists(f'data/{sid+"_"+target_seller_id}_products_details.json'):
+            existing_products_details = self.read_json(prefix=sid+"_"+target_seller_id, type='products_details')
+        products_last_id = existing_products_details[-1]['id'] if existing_products_details else 0
         for i in existing_products_details:
-            self.db.product_create(i)
+            self.db.upsert_product_in_table(i)
+            self.db.update_total_scraped_product_num(sid)
         new_products_details = []
         for item in existing_links:
-            if item['id'] > last_id:
+            if item['id'] > products_last_id:
                 start_time = time.time()
                 details = self.basalam_product_details_dict(item['link'], driver)
                 details['id'] = item['id']
+                details['is_scraped'] = 1
                 details['seller_id'] = sid
                 details['link'] = item['link']
                 new_products_details.append(details)
                 products_details = existing_products_details + new_products_details
-                self.write_json(prefix=seller_id, type='products_details', data=products_details)
-                self.db.product_create(details)
+                self.write_json(prefix=sid+"_"+target_seller_id, type='products_details', data=products_details)
+                self.db.upsert_product_in_table(details)
+                self.db.update_total_scraped_product_num(sid)
+
                 end_time = time.time()
                 elapsed_time = end_time - start_time
                 if elapsed_time > 12:
                     print(f"Product details extraction took too long ({elapsed_time} seconds).")
                     driver = self.reset_driver(driver)
-
+                progress = int((item['id'] / links_last_id) * 100)
+                print(f'Progress: {progress}%')
+                if progress_callback:
+                    progress_callback(progress)
+        self.db.close()
         driver.quit()
         process_end_time = time.time()
         process_elapsed_time = process_end_time - process_start_time
         print(f"Process elapsed time: {process_elapsed_time} seconds")
-
+        
     def torob_products_details_extractor(self, seller_url, sid, driver='firefox'):
         if driver == 'firefox':
             driver = self.init_firefox_driver()

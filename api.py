@@ -1,37 +1,75 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, HttpUrl, validator
-from Scraper import ProductScraper
+# api.py
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request
+from models import URLItem, Origin, RateLimit, CSRF, APIKeyManager, ConnectionManager
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from celery_app import celery_app, run_scraper, redis_client
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import asyncio
 
 app = FastAPI()
-scraper = ProductScraper()
+manager = ConnectionManager()
+csrf_protect = CSRF()
 
-class URLItem(BaseModel):
-    seller_url: HttpUrl
-    sid: str
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    @validator('seller_url')
-    def validate_url(cls, v):
-        allowed_domains = ['basalam.com', 'torob.com', 'digikala.com']
-        url_str = str(v)  # Convert HttpUrl to string
-        if not any(domain in url_str for domain in allowed_domains):
-            raise ValueError('URL must be from one of the allowed domains: basalam.com, torob.com, digikala.com')
-        return v
+api_key_manager = APIKeyManager()
 
-@app.post("/scrape/")
-async def scrape(item: URLItem):
-    url = str(item.seller_url)  # Convert HttpUrl to string
-    sid = item.sid
+@app.get("/get-csrf-token")
+async def get_csrf_token():
+    csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
+    response = JSONResponse({"csrf_token": csrf_token})
+    csrf_protect.set_csrf_cookie(signed_token, response)
+    return response
 
-    if 'basalam.com' in url:
-        scraper.basalam_products_details_extractor(url, sid)
-    elif 'torob.com' in url:
-        scraper.torob_products_details_extractor(url, sid)
-    elif 'digikala.com' in url:
-        scraper.digikala_products_details_extractor(url, sid)
+def api_key_then_rate_limit(
+    api_key: str = Depends(api_key_manager.get_api_key),
+    rate_limit: None = Depends(RateLimit(0.3))
+):
+    # اگر API key معتبر باشد، محدودیت نرخ اعمال می‌شود
+    return rate_limit
+
+@app.post("/scrape", dependencies=[Depends(Origin), Depends(api_key_then_rate_limit), Depends(csrf_protect.validate_csrf)])
+async def scrape(item: URLItem, request: Request):
+    task = run_scraper.delay(str(item.seller_url), item.sid, item.products_num)
+    response = JSONResponse(status_code=200, content={"detail": "OK"})
+    csrf_protect.unset_csrf_cookie(response)
+    return {"message": "Scraping started in background", "task_id": task.id}
+
+@app.get("/task-status/{task_id}")
+async def get_task_status(task_id: str):
+    task = run_scraper.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        return {"status": "Pending"}
+    elif task.state == 'SUCCESS':
+        return {"status": "Success", "result": task.result}
+    elif task.state == 'FAILURE':
+        return {"status": "Failure", "error": str(task.info)}
     else:
-        raise HTTPException(status_code=400, detail="Unsupported URL")
+        return {"status": task.state}
 
-    return {"message": "Scraping started successfully"}
+@app.websocket("/ws/{sid}")
+async def websocket_endpoint(websocket: WebSocket, sid: str):
+    await manager.connect(websocket)
+    pubsub = redis_client.pubsub()
+    pubsub.subscribe(f"progress_{sid}")
+    try:
+        while True:
+            message = pubsub.get_message()
+            if message and not message['type'] == 'subscribe':
+                await manager.send_message(f"Progress: {message['data'].decode('utf-8')}%", websocket)
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    finally:
+        pubsub.close()
 
 if __name__ == "__main__":
     import uvicorn

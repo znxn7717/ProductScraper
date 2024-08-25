@@ -1,0 +1,19 @@
+socketify < uvicorn
+
+.venv\Scripts\activate
+
+pip freeze > requirements.txt
+
+uvicorn api:app --reload
+
+celery -A celery_app.celery_app worker --loglevel=info -P solo
+
+cd client_nuxt
+
+pnpm run dev
+
+.pypy3venv\Scripts\activate
+
+
+
+pypy3 -m venv .pypy3venv
