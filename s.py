@@ -1,28 +1,36 @@
 # from Scraper import ProductScraper
-from Test2 import ProductScraper
+# from Test import ProductScraper
 # from utiles.categories_sorter import categories_sorter
 
-scraper = ProductScraper()
+# scraper = ProductScraper()
 # seller_url = 'https://basalam.com/arayeshii_artemis'
 # seller_url = 'https://basalam.com/khaneyesalamat'
 # seller_url = 'https://basalam.com/elahenazz'
-seller_url = 'https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA'
+# seller_url = 'https://torob.com/shop/5566/%D8%B2%D8%B1%D9%BE%D9%88%D8%B4%D8%A7%D9%86/%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA'
 # seller_url = 'https://www.digikala.com/seller/5a6gg/'
 # seller_url = 'https://www.digikala.com/seller/c7kvk/'
-# scraper.basalam_products_details_extractor(seller_url, 's25f36', products_num=30)
-# scraper.torob_products_details_extractor(seller_url, 's25f36', products_num=30)
+# scraper.basalam_products_details_extractor(seller_url, 's25f36', products_num='auto')
+# scraper.torob_products_details_extractor(seller_url, 's25f36', products_num='auto')
 # scraper.digikala_products_details_extractor(seller_url, 'SDAASF2', driver='chrome')
 
-# scraper.test(seller_url)
-scraper.torob_links_extractor(seller_url, 's25f36', products_num=500)
-# print(seller_url.rstrip('/').split('/')[-2])
+# from extractors.torob import Torob
+# from extractors.basalam import Basalam
+# from extractors.digikala import Digikala
 
-# from utiles.torob_sellers_extractor import sellers_details_extractor_wd, sellers_crawler
+# torob = Torob()
+# basalam = Basalam()
+# digikala = Digikala()
 
-# sellers_crawler()
+# digikala.digikala_products_details_extractor(seller_url, 's25f36', products_num=100)
 
 
 
+
+
+
+from utiles.torob_sellers_extractor import sellers_details_extractor_wd, sellers_crawler, sort_json_by_id
+
+sellers_crawler()
 
 
 

@@ -4,13 +4,30 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from Scraper import ProductScraper
+from extractors import ProductExtractor
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-scraper = ProductScraper()
+scraper = ProductExtractor()
+
+def sort_json_by_id():
+    json = scraper.read_json(prefix='reference/sellers', type='details')
+    sorted_json = sorted(json, key=lambda x: x['id'])
+    scraper.write_json(prefix='reference/sellers', type='details', data=sorted_json)
+
+def read_counter():
+    if os.path.exists('data/reference/seller_details_scounter.txt'):
+        with open('data/reference/seller_details_scounter.txt', 'r') as f:
+            content = f.read().strip()
+            if content:
+                return int(content.split(' | ')[0])
+    return 0
+
+def write_counter(i, ID):
+    with open('data/reference/seller_details_scounter.txt', 'w') as f:
+        f.write(f'{i} | {ID}\r')
 
 def contact_info(soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns):
     phone_numbers = set(re.findall(phone_pattern, soup.get_text(separator=' ')))
@@ -81,21 +98,35 @@ def sellers_crawler():
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
     if os.path.exists('data/reference/sellers_details.json'):
         existing_sellers_details = scraper.read_json(prefix='reference/sellers', type='details')
-    for i in range(0, 150000):
+    start_index = read_counter()
+    for i in range(start_index, len(existing_sellers_details)):
+        if 'xci' in existing_sellers_details[i]:
+            continue
+        ID = existing_sellers_details[i]['id']
+        SU = existing_sellers_details[i]['su']
+        write_counter(i, ID)
         try:
-            ID = existing_sellers_details[i]['id']
-            SU = existing_sellers_details[i]['su']
-            phone_pattern = r'(?:\+98|0098|0?9)\d{9}'
+            phone_pattern = r'(?:\+98|0098|۰۹|0?9)\d{9}'
             email_pattern = r'[a-zA-Z0-9._%+-]+(?:\[at\]|@)[a-zA-Z0-9.-]+(?:\[dot\]|\.)[a-zA-Z]{2,}'
             whatsapp_patterns = [r'api\.whatsapp\.com', r'wa\.me']
             telegram_patterns = [r't\.me', r'telegram\.me', r'telegram\.com']
             instagram_patterns = [r'instagram\.com']
             response = requests.get(SU, verify=False)
             if response.status_code != 200:
-                print(f'>>>>> at {i} | {ID} ("su" : {SU}): Failed to fetch page. Status code: {response.status_code}')
-                existing_sellers_details[i]['xci'] = {
-                    'error': f"Failed to fetch page. Status code: {response.status_code}"
-                }
+                if "offline-shop.torob.ir" in SU:
+                    phone_match = re.findall(phone_pattern, existing_sellers_details[i]['ci'])
+                    persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+                    phone_match = [phone.translate(persian_to_english_digits) for phone in phone_match]
+                    existing_sellers_details[i]['xci'] = {
+                        'phone_numbers': phone_match
+                    }
+                    print(f'>>>>> at {i} | {ID} ("su" : {SU}): {existing_sellers_details[i]["xci"]}')
+                else:
+                    print(f'>>>>> at {i} | {ID} ("su" : {SU}): Failed to fetch page. Status code: {response.status_code}')
+                    existing_sellers_details[i]['xci'] = {
+                        'error': f"Failed to fetch page. Status code: {response.status_code}"
+                    }
+                scraper.write_json(data=existing_sellers_details, prefix='reference/sellers', type='details')
                 continue
             soup = BeautifulSoup(response.content, 'html.parser')
             phone_numbers, emails, whatsapp, telegram, instagram = contact_info(
@@ -135,37 +166,53 @@ def sellers_crawler():
             }
             continue
 
-def sellers_details_extractor_wd():
+def sellers_details_extractor_wd(check_missing_ids=False):
     driver = scraper.init_firefox_driver()
     existing_sellers_details = []
+    
     if os.path.exists('data/reference/sellers_details.json'):
         existing_sellers_details = scraper.read_json(prefix='reference/sellers', type='details')
-    last_id = existing_sellers_details[-1]['id'] if existing_sellers_details else 0
+    
+    if check_missing_ids:
+        existing_ids = {detail['id'] for detail in existing_sellers_details}
+        all_ids = set(range(1, 160000))
+        inrange = sorted(list(all_ids - existing_ids))
+    else:
+        last_id = existing_sellers_details[-1]['id'] if existing_sellers_details else 0
+        inrange = range(last_id + 1, 160000)
+    
     new_sellers_details = []
-    for i in range(last_id + 1 , 150000):
+    
+    for i in inrange:
         try:
             driver.get(f'https://torob.com/shop/{i}/')
             wait = WebDriverWait(driver, 3)
             header_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(1) > td:nth-child(1) > h2:nth-child(1)')))
+            
             if header_element.text in ['مجوزها و اعتبار', 'سابقه همکاری با ترب']:
                 try:
                     seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > h1:nth-child(1)'))).text
                 except Exception:
                     seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_shopName__6Vmrc'))).text
+                
                 try:
                     seller_url = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > a:nth-child(2)'))).get_attribute('href')
                 except Exception:
                     seller_url = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a.ShopInfoHeader_white__XJYKB'))).get_attribute('href')
+                
                 try:
                     seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#province-city'))).text
                 except Exception:
                     seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.ShopInfoHeader_white__XJYKB'))).text
+                
                 history_of_cooperation_selector = 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(1) > td:nth-child(2)'
                 performance_score_selector = 'tr.jsx-637019445:nth-child(3) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)'
                 contact_information_selector = 'tr.jsx-637019445:nth-child(8) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(7) > td:nth-child(2)'
+                
                 history_of_cooperation = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, history_of_cooperation_selector))).text
                 performance_score = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, performance_score_selector))).text
                 contact_information = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, contact_information_selector))).text
+                
                 new_sellers_details.append({
                     'id': i,
                     'sn': seller_name,
@@ -175,13 +222,67 @@ def sellers_details_extractor_wd():
                     'ps': performance_score,
                     'ci': contact_information
                 })
+            
             sellers_details = existing_sellers_details + new_sellers_details
             df = pd.DataFrame(sellers_details)
             print(f"Total number of links: {len(df)} | id: {i}")
             scraper.write_json(prefix='reference/sellers', type='details', data=sellers_details)
+        
         except Exception as e:
             print(f"Error occurred at {i}: {e}")
             continue
+
+
+
+
+
+# def sellers_details_extractor_wd():
+#     driver = scraper.init_firefox_driver()
+#     existing_sellers_details = []
+#     if os.path.exists('data/reference/sellers_details.json'):
+#         existing_sellers_details = scraper.read_json(prefix='reference/sellers', type='details')
+#     last_id = existing_sellers_details[-1]['id'] if existing_sellers_details else 0
+#     new_sellers_details = []
+#     for i in range(last_id + 1 , 160000):
+#         try:
+#             driver.get(f'https://torob.com/shop/{i}/')
+#             wait = WebDriverWait(driver, 3)
+#             header_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.jsx-637019445:nth-child(1) > td:nth-child(1) > h2:nth-child(1)')))
+#             if header_element.text in ['مجوزها و اعتبار', 'سابقه همکاری با ترب']:
+#                 try:
+#                     seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > h1:nth-child(1)'))).text
+#                 except Exception:
+#                     seller_name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_shopName__6Vmrc'))).text
+#                 try:
+#                     seller_url = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ShopInfoHeader_title__8wNZ0 > a:nth-child(2)'))).get_attribute('href')
+#                 except Exception:
+#                     seller_url = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a.ShopInfoHeader_white__XJYKB'))).get_attribute('href')
+#                 try:
+#                     seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#province-city'))).text
+#                 except Exception:
+#                     seller_location = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.ShopInfoHeader_white__XJYKB'))).text
+#                 history_of_cooperation_selector = 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(1) > td:nth-child(2)'
+#                 performance_score_selector = 'tr.jsx-637019445:nth-child(3) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(2) > td:nth-child(2)'
+#                 contact_information_selector = 'tr.jsx-637019445:nth-child(8) > td:nth-child(2)' if header_element.text == 'مجوزها و اعتبار' else 'tr.jsx-637019445:nth-child(7) > td:nth-child(2)'
+#                 history_of_cooperation = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, history_of_cooperation_selector))).text
+#                 performance_score = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, performance_score_selector))).text
+#                 contact_information = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, contact_information_selector))).text
+#                 new_sellers_details.append({
+#                     'id': i,
+#                     'sn': seller_name,
+#                     'su': seller_url,
+#                     'sl': seller_location,
+#                     'hof': history_of_cooperation,
+#                     'ps': performance_score,
+#                     'ci': contact_information
+#                 })
+#             sellers_details = existing_sellers_details + new_sellers_details
+#             df = pd.DataFrame(sellers_details)
+#             print(f"Total number of links: {len(df)} | id: {i}")
+#             scraper.write_json(prefix='reference/sellers', type='details', data=sellers_details)
+#         except Exception as e:
+#             print(f"Error occurred at {i}: {e}")
+#             continue
 
 def sellers_details_extractor_bs4():
     existing_sellers_details = []

@@ -9,7 +9,13 @@ module.exports = {
     "./error.vue",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        vazir: ['Vazir'],
+        vazirrdfdnl: ['VazirRDFDNL'],
+        behdad: ['Behdad', 'VazirRDFDNL'],
+      }
+    }
   },
   plugins: [],
 }

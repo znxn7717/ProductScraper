@@ -4,9 +4,10 @@ socketify < uvicorn
 
 pip freeze > requirements.txt
 
-uvicorn api:app --reload
+uvicorn api:app --reload --port 8000
+uvicorn api:app --reload --port 8001
 
-celery -A celery_app.celery_app worker --loglevel=info -P solo
+celery -A celery_app.celery_app worker --loglevel=info -P threads
 
 cd client_nuxt
 
@@ -17,3 +18,6 @@ pnpm run dev
 
 
 pypy3 -m venv .pypy3venv
+
+
+خطا: Message: None 
