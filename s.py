@@ -29,11 +29,12 @@
 
 
 from utiles.torob_sellers_extractor import sellers_details_extractor_wd, sellers_crawler, sort_json_by_id
+from utiles.sellers_regulator import json_length, filter1, phone_match, count_phone_numbers
 
+# json_length('data/reference/sellers/phone_numbers1.json')
+# phone_match()
+# count_phone_numbers()
 sellers_crawler()
-
-
-
 
 
 

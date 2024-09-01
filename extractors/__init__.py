@@ -16,7 +16,7 @@ class ProductExtractor:
                  chrome_binary_path='C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
                  window_size='--window-size=1920,1080',
                  incognito_mode=True,
-                 headless_mode=True):
+                 headless_mode=False):
         self.firefox_driver_path = firefox_driver_path
         self.chrome_driver_path = chrome_driver_path
         self.firefox_binary_path = firefox_binary_path
@@ -27,9 +27,9 @@ class ProductExtractor:
         logging.basicConfig(level=logging.INFO, 
                             format='%(asctime)s - %(levelname)s - %(funcName)s - %(message)s')
         self.logger = logging.getLogger(__name__)
-        self.db = Database()
-        self.db.connect_to_database()
-        self.db.setup_product_table()
+        # self.db = Database()
+        # self.db.connect_to_database()
+        # self.db.setup_product_table()
 
     def init_firefox_driver(self):
         service = Service(self.firefox_driver_path)

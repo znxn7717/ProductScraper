@@ -5,10 +5,13 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from extractors import ProductExtractor
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from utiles.digikala_data_extractor import get_product_data
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions as EC
 
 scraper = ProductExtractor()
 
@@ -29,15 +32,16 @@ def write_counter(i, ID):
     with open('data/reference/seller_details_scounter.txt', 'w') as f:
         f.write(f'{i} | {ID}\r')
 
-def contact_info(soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns):
-    phone_numbers = set(re.findall(phone_pattern, soup.get_text(separator=' ')))
-    emails = set(re.findall(email_pattern, soup.get_text(separator=' ')))
+def contact_info(page_source, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns):
+    phone_numbers = set(re.findall(phone_pattern, page_source))
+    emails = set(re.findall(email_pattern, page_source))
     emails = {email.replace('[at]', '@').replace('[dot]', '.') for email in emails}
     whatsapp = set()
     telegram = set()
     instagram = set()
-    for a_tag in soup.find_all('a', href=True):
-        href = a_tag['href']
+
+    hrefs = re.findall(r'href="([^"]+)"', page_source)
+    for href in hrefs:
         if any(re.search(pattern, href) for pattern in whatsapp_patterns):
             whatsapp.add(href)
             phone_match = re.search(r'phone=(98\d{10})', href)
@@ -51,7 +55,32 @@ def contact_info(soup, phone_pattern, email_pattern, whatsapp_patterns, telegram
             telegram.add(href)
         if any(re.search(pattern, href) for pattern in instagram_patterns):
             instagram.add(href)
+    
     return phone_numbers, emails, whatsapp, telegram, instagram
+
+# def contact_info(soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns):
+#     phone_numbers = set(re.findall(phone_pattern, soup.get_text(separator=' ')))
+#     emails = set(re.findall(email_pattern, soup.get_text(separator=' ')))
+#     emails = {email.replace('[at]', '@').replace('[dot]', '.') for email in emails}
+#     whatsapp = set()
+#     telegram = set()
+#     instagram = set()
+#     for a_tag in soup.find_all('a', href=True):
+#         href = a_tag['href']
+#         if any(re.search(pattern, href) for pattern in whatsapp_patterns):
+#             whatsapp.add(href)
+#             phone_match = re.search(r'phone=(98\d{10})', href)
+#             if not phone_match:
+#                 phone_match = re.search(r'wa\.me/(98\d{10})', href)
+#             if phone_match:
+#                 phone_number = phone_match.group(1)
+#                 phone_number = '0' + phone_number[2:]
+#                 phone_numbers.add(phone_number)
+#         if any(re.search(pattern, href) for pattern in telegram_patterns):
+#             telegram.add(href)
+#         if any(re.search(pattern, href) for pattern in instagram_patterns):
+#             instagram.add(href)
+#     return phone_numbers, emails, whatsapp, telegram, instagram
 
 def xci_extend(sellers_details, new_phone_numbers, new_emails, new_whatsapp, new_telegram, new_instagram):
     if 'xci' not in sellers_details:
@@ -95,11 +124,14 @@ def remove_duplicates(xci_data):
         xci_data['instagram'] = list(set(xci_data['instagram']))
 
 def sellers_crawler():
-    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+    driver = scraper.init_firefox_driver()
+    driver.implicitly_wait(10)
+    
     if os.path.exists('data/reference/sellers_details.json'):
         existing_sellers_details = scraper.read_json(prefix='reference/sellers', type='details')
+    
     start_index = read_counter()
-    for i in range(start_index, len(existing_sellers_details)):
+    for i in range(0, len(existing_sellers_details)):
         if 'xci' in existing_sellers_details[i]:
             continue
         ID = existing_sellers_details[i]['id']
@@ -111,45 +143,50 @@ def sellers_crawler():
             whatsapp_patterns = [r'api\.whatsapp\.com', r'wa\.me']
             telegram_patterns = [r't\.me', r'telegram\.me', r'telegram\.com']
             instagram_patterns = [r'instagram\.com']
-            response = requests.get(SU, verify=False)
-            if response.status_code != 200:
-                if "offline-shop.torob.ir" in SU:
-                    phone_match = re.findall(phone_pattern, existing_sellers_details[i]['ci'])
-                    persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
-                    phone_match = [phone.translate(persian_to_english_digits) for phone in phone_match]
-                    existing_sellers_details[i]['xci'] = {
-                        'phone_numbers': phone_match
-                    }
-                    print(f'>>>>> at {i} | {ID} ("su" : {SU}): {existing_sellers_details[i]["xci"]}')
-                else:
-                    print(f'>>>>> at {i} | {ID} ("su" : {SU}): Failed to fetch page. Status code: {response.status_code}')
-                    existing_sellers_details[i]['xci'] = {
-                        'error': f"Failed to fetch page. Status code: {response.status_code}"
-                    }
+
+            driver.get(SU)
+            wait = WebDriverWait(driver, 10)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+
+
+            if "offline-shop.torob.ir" in SU:
+                phone_match = re.findall(phone_pattern, existing_sellers_details[i]['ci'])
+                persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+                phone_match = [phone.translate(persian_to_english_digits) for phone in phone_match]
+                existing_sellers_details[i]['xci'] = {
+                    'phone_numbers': phone_match
+                }
+                print(f'>>>>> at {i} | {ID} ("su" : {SU}): {existing_sellers_details[i]["xci"]}')
                 scraper.write_json(data=existing_sellers_details, prefix='reference/sellers', type='details')
                 continue
-            soup = BeautifulSoup(response.content, 'html.parser')
+
+            page_source = driver.page_source
             phone_numbers, emails, whatsapp, telegram, instagram = contact_info(
-                soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns)
+                page_source, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns)
             xci_extend(existing_sellers_details[i], phone_numbers, emails, whatsapp, telegram, instagram)
-            contact_tag = soup.find('a', href=re.compile(r"contact|%D8%AA%D9%85%D8%A7%D8%B3", re.IGNORECASE))
-            if not contact_tag:
-                contact_tag = soup.find(lambda tag: tag.name == 'a' and tag.find_all(text=re.compile(r"تماس با|ارتباط با", re.IGNORECASE)))
-            if contact_tag and contact_tag.get('href'):
-                contact_url = contact_tag['href']
-                contact_url = urljoin(SU, contact_url)
-                contact_response = requests.get(contact_url, verify=False)
-                if contact_response.status_code != 200:
-                    print(f'>>>>> at {i} | {ID} ("su" : {SU}): Failed to fetch contact page. Status code: {contact_response.status_code}')
-                    existing_sellers_details[i]['xci'] = {
-                        'error': f"Failed to fetch contact page. Status code: {contact_response.status_code}"
-                    }
-                    continue
-                contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
+
+            contact_link = None
+            try:
+                contact_tag = driver.find_element(By.XPATH, "//a[contains(@href, 'contact') or contains(@href, '%D8%AA%D9%85%D8%A7%D8%B3')]")
+                contact_link = contact_tag.get_attribute('href')
+            except:
+                pass
+
+            if not contact_link:
+                try:
+                    contact_tag = driver.find_element(By.XPATH, "//a[contains(text(), 'تماس با') or contains(text(), 'ارتباط با')]")
+                    contact_link = contact_tag.get_attribute('href')
+                except:
+                    pass
+
+            if contact_link:
+                contact_url = urljoin(SU, contact_link)
+                driver.get(contact_url)
+                wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                contact_page_source = driver.page_source
                 phone_numbers, emails, whatsapp, telegram, instagram = contact_info(
-                    contact_soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns)
+                    contact_page_source, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns)
                 xci_extend(existing_sellers_details[i], phone_numbers, emails, whatsapp, telegram, instagram)
-                # existing_sellers_details[i]['xci']['emails'].append(f'info@{SU.split("//")[-1].split("/")[0]}')
                 remove_duplicates(existing_sellers_details[i]['xci'])
                 scraper.write_json(data=existing_sellers_details, prefix='reference/sellers', type='details')
                 print(f'>>>>> at {i} | {ID} ("su" : {SU}): {existing_sellers_details[i]["xci"]}')
@@ -159,12 +196,88 @@ def sellers_crawler():
                     'error': "Contact link not found"
                 }
                 continue
+
         except Exception as e:
             print(f'>>>>> at {i} | {ID} ("su" : {SU}): {e}')
             existing_sellers_details[i]['xci'] = {
                 'error': f'{e}'
             }
             continue
+    
+    driver.quit()
+
+
+# def sellers_crawler():
+#     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+#     if os.path.exists('data/reference/sellers_details.json'):
+#         existing_sellers_details = scraper.read_json(prefix='reference/sellers', type='details')
+#     start_index = read_counter()
+#     for i in range(0, len(existing_sellers_details)):
+#         if 'xci' in existing_sellers_details[i]:
+#             continue
+#         ID = existing_sellers_details[i]['id']
+#         SU = existing_sellers_details[i]['su']
+#         write_counter(i, ID)
+#         try:
+#             phone_pattern = r'(?:\+98|0098|۰۹|0?9)\d{9}'
+#             email_pattern = r'[a-zA-Z0-9._%+-]+(?:\[at\]|@)[a-zA-Z0-9.-]+(?:\[dot\]|\.)[a-zA-Z]{2,}'
+#             whatsapp_patterns = [r'api\.whatsapp\.com', r'wa\.me']
+#             telegram_patterns = [r't\.me', r'telegram\.me', r'telegram\.com']
+#             instagram_patterns = [r'instagram\.com']
+#             response = requests.get(SU, verify=False)
+#             if response.status_code != 200:
+#                 if "offline-shop.torob.ir" in SU:
+#                     phone_match = re.findall(phone_pattern, existing_sellers_details[i]['ci'])
+#                     persian_to_english_digits = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+#                     phone_match = [phone.translate(persian_to_english_digits) for phone in phone_match]
+#                     existing_sellers_details[i]['xci'] = {
+#                         'phone_numbers': phone_match
+#                     }
+#                     print(f'>>>>> at {i} | {ID} ("su" : {SU}): {existing_sellers_details[i]["xci"]}')
+#                 else:
+#                     print(f'>>>>> at {i} | {ID} ("su" : {SU}): Failed to fetch page. Status code: {response.status_code}')
+#                     existing_sellers_details[i]['xci'] = {
+#                         'error': f"Failed to fetch page. Status code: {response.status_code}"
+#                     }
+#                 scraper.write_json(data=existing_sellers_details, prefix='reference/sellers', type='details')
+#                 continue
+#             soup = BeautifulSoup(response.content, 'html.parser')
+#             phone_numbers, emails, whatsapp, telegram, instagram = contact_info(
+#                 soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns)
+#             xci_extend(existing_sellers_details[i], phone_numbers, emails, whatsapp, telegram, instagram)
+#             contact_tag = soup.find('a', href=re.compile(r"contact|%D8%AA%D9%85%D8%A7%D8%B3", re.IGNORECASE))
+#             if not contact_tag:
+#                 contact_tag = soup.find(lambda tag: tag.name == 'a' and tag.find_all(text=re.compile(r"تماس با|ارتباط با", re.IGNORECASE)))
+#             if contact_tag and contact_tag.get('href'):
+#                 contact_url = contact_tag['href']
+#                 contact_url = urljoin(SU, contact_url)
+#                 contact_response = requests.get(contact_url, verify=False)
+#                 if contact_response.status_code != 200:
+#                     print(f'>>>>> at {i} | {ID} ("su" : {SU}): Failed to fetch contact page. Status code: {contact_response.status_code}')
+#                     existing_sellers_details[i]['xci'] = {
+#                         'error': f"Failed to fetch contact page. Status code: {contact_response.status_code}"
+#                     }
+#                     continue
+#                 contact_soup = BeautifulSoup(contact_response.content, 'html.parser')
+#                 phone_numbers, emails, whatsapp, telegram, instagram = contact_info(
+#                     contact_soup, phone_pattern, email_pattern, whatsapp_patterns, telegram_patterns, instagram_patterns)
+#                 xci_extend(existing_sellers_details[i], phone_numbers, emails, whatsapp, telegram, instagram)
+#                 # existing_sellers_details[i]['xci']['emails'].append(f'info@{SU.split("//")[-1].split("/")[0]}')
+#                 remove_duplicates(existing_sellers_details[i]['xci'])
+#                 scraper.write_json(data=existing_sellers_details, prefix='reference/sellers', type='details')
+#                 print(f'>>>>> at {i} | {ID} ("su" : {SU}): {existing_sellers_details[i]["xci"]}')
+#             else:
+#                 print(f'>>>>> at {i} | {ID} ("su" : {SU}): Contact link not found')
+#                 existing_sellers_details[i]['xci'] = {
+#                     'error': "Contact link not found"
+#                 }
+#                 continue
+#         except Exception as e:
+#             print(f'>>>>> at {i} | {ID} ("su" : {SU}): {e}')
+#             existing_sellers_details[i]['xci'] = {
+#                 'error': f'{e}'
+#             }
+#             continue
 
 def sellers_details_extractor_wd(check_missing_ids=False):
     driver = scraper.init_firefox_driver()

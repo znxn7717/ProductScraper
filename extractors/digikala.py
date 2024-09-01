@@ -146,7 +146,7 @@ class Digikala(ProductExtractor):
                     pid = re.search(r'-(\d+)', product_url).group(1)
                 data = get_product_data(pid)
                 product_group = data[5]
-                product_group = self.find_key_by_value("data/reference/fuzzed_listed_sorted_digikala_categories.json", product_group)
+                product_group = self.find_key_by_value("data/reference/categories/fuzzed_listed_sorted_digikala_categories.json", product_group)
                 title = data[1]
                 if data[8]:
                         price = str(int(data[8]/10))
@@ -172,7 +172,7 @@ class Digikala(ProductExtractor):
             try:
                 product_group = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div[3]/div[3]/div[2]/div[1]/nav/div/div/div[1]').text
                 product_group = product_group.replace("دیجی‌کالا/\n", "").replace("/\n", ">")
-                product_group = self.find_key_by_value("data/reference/fuzzed_listed_sorted_digikala_categories.json", product_group)
+                product_group = self.find_key_by_value("data/reference/categories/fuzzed_listed_sorted_digikala_categories.json", product_group)
                 # product_group = product_group.rsplit(">", 1)[0]
             except:
                 product_group = None

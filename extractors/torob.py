@@ -105,7 +105,7 @@ class Torob(ProductExtractor):
         try:
             product_group = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/div/div/div[2]/div/div[1]/div[1]/div/div').text
             product_group = product_group.replace("ترب\n", "").replace("\n", ">")
-            product_group = self.find_key_by_value("data/reference/fuzzed_listed_sorted_torob_categories.json", product_group)
+            product_group = self.find_key_by_value("data/reference/categories/fuzzed_listed_sorted_torob_categories.json", product_group)
             # product_group = product_group.rsplit(">", 1)[0]
         except:
             product_group = None
